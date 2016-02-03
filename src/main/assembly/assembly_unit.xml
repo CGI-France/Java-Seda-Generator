@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly
+	xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+	<id>bin</id>
+	<formats>
+		<format>zip</format>
+	</formats>
+
+	<fileSets>
+
+		<fileSet>
+			<directory>src/main/sh</directory>
+			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>*_unit.sh</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+		
+		<fileSet>
+			<directory>sql/1structure</directory>
+			<outputDirectory>sql/1structure</outputDirectory>
+			<includes>
+				<include>*.sql</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+		
+		<fileSet>
+			<directory>sql/2data</directory>
+			<outputDirectory>sql/2data</outputDirectory>
+			<includes>
+				<include>*.sql</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+		
+		<fileSet>
+			<directory>src/main/resources</directory>
+			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>sedaGeneratorUnit.properties</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+		
+		<fileSet>
+			<directory>src/test/resources</directory>
+			<outputDirectory>logback/</outputDirectory>
+			<includes>
+				<include>logback.xml</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+
+	</fileSets>
+
+	<dependencySets>
+		<dependencySet>
+			<outputDirectory>lib</outputDirectory>
+		</dependencySet>
+	</dependencySets>
+</assembly>

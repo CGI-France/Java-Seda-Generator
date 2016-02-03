@@ -1,0 +1,3 @@
+INSERT INTO SAE(SAE_AccordVersement, SAE_Serveur, TransferIdPrefix, TransferIdValue, SAE_ProfilArchivage, TransferringAgencyId, TransferringAgencyName, TransferringAgencyDesc, ArchivalAgencyId, ArchivalAgencyName, ArchivalAgencyDesc)
+VALUES
+('[SAE_AccordVersement]', '[SAE_Serveur]', '[TransferIdPrefix]', 0, '[SAE_ProfilArchivage]', '[TransferringAgencyId]', '[TransferringAgencyName]', '[TransferringAgencyDesc]', '[ArchivalAgencyId]', '[ArchivalAgencyName]', '[ArchivalAgencyDesc]');
