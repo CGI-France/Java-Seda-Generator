@@ -136,7 +136,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
          * @return false si la ligne est une ligne de commentaire (commence par espace ou tabulation
          * */
         private boolean isThisLineALineOfData(String line) {
-            return line.length() > 0 && line.charAt(0) != ' ' && line.charAt(0) != '\t';
+            return line.length() > 0 && line.charAt(0) != '#';
         }
 
 	/**
