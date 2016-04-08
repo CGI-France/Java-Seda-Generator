@@ -1,5 +1,6 @@
 package sedaProfileGenerator;
 
+import commonClasses.Utils;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -87,6 +88,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	private static final String ERROR_REFER_END = "à des documents";
 	private static final String ERROR_NOT_FOUND = "Error not found";
 	private static final String ERROR_DATAERR_BEGIN = "#DATAERR:";
+    private static final String ERROR_INCORRECT_NUMBER_OF_SEPARATOR = "#DATAERR: Nombre de séparateurs incorrect en ligne '";
 	private static final String ERROR_DATAERR_FILENAME = "#DATAERR: Le nom de fichier du document n'a pas été trouvé dans : '";
 	private static final String ERROR_DATAERR_NAME = "#DATAERR: Le nom du document n'a pas été trouvé dans : '";
 	private static final String ERROR_DATAERR_DATE = "#DATAERR: La date du document n'a pas été trouvée dans : '";
@@ -125,6 +127,18 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 
 	}
 
+        /*
+         * Indique si la ligne est une ligne de données ou une ligne de commentaires
+         * Les lignes de commentaires commencent par une espace ou une tabulation
+         *
+         * @param line la ligne de données à vérifier
+         * @return true si la ligne est une ligne de données
+         * @return false si la ligne est une ligne de commentaire (commence par espace ou tabulation
+         * */
+        private boolean isThisLineALineOfData(String line) {
+            return line.length() > 0 && line.charAt(0) != ' ' && line.charAt(0) != '\t';
+        }
+
 	/**
 	 * Charge un fichier de données métiers
 	 *
@@ -151,32 +165,32 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 			while ((line = br.readLine()) != null) {
 				currentLine++;
 				isLineMalformed = false;
-				if (line.length() > 0) {
-					line = removeUTF8BOM(line);
-					rgxSeperator = EMPTY + line.charAt(0);
-					elements = line.split(rgxSeperator);
-					elementsLength = elements.length;
-					if (elementsLength > 2) {
-						if (StringUtils.isNotEmpty(elements[1]) && elements[1].startsWith(BEGINNING_CAR)) {
-							if (elementsLength != (NB_TAG_LINE_VALUE_FIELDS + 1)) {
-								isLineMalformed = true;
-							} else {
-								keyList.add(elements);
-							}
-						} else {
-							if (elementsLength < (NB_MIN_DOCUMENT_LINE_FIELDS + 1)
-									|| elementsLength > (NB_MAX_DOCUMENT_LINE_FIELDS + 1)) {
-								isLineMalformed = true;
-							} else {
-								documentsList.add(elements);
-							}
-						}
-					} else {
-						isLineMalformed = true;
-					}
-					if (isLineMalformed) {
-						logAndAddErrorsList(ERROR_MALFORMED_LINE + Arrays.toString(elements));
-					}
+                line = removeUTF8BOM(line);
+                if ( isThisLineALineOfData(line) ) {
+                    rgxSeperator = EMPTY + line.charAt(0);
+                    elements = line.split(rgxSeperator);
+                    elementsLength = elements.length;
+                    if (elementsLength > 2) {
+                        if (StringUtils.isNotEmpty(elements[1]) && elements[1].startsWith(BEGINNING_CAR)) {
+                            if (elementsLength != (NB_TAG_LINE_VALUE_FIELDS + 1)) {
+                                isLineMalformed = true;
+                            } else {
+                                keyList.add(elements);
+                            }
+                        } else {
+                            if (elementsLength < (NB_MIN_DOCUMENT_LINE_FIELDS + 1)
+                                    || elementsLength > (NB_MAX_DOCUMENT_LINE_FIELDS + 1)) {
+                                isLineMalformed = true;
+                            } else {
+                                documentsList.add(elements);
+                            }
+                        }
+                    } else {
+                        isLineMalformed = true;
+                    }
+                    if (isLineMalformed) {
+                        logAndAddErrorsList(ERROR_MALFORMED_LINE + Arrays.toString(elements));
+                    }
 				}
 				lastError = EMPTY;
 			}
