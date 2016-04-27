@@ -157,6 +157,9 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String TRACE_BEGIN_GENERATE_SUMMARY_FILE_PASS_2 = "Début de génération du bordereau";
 	private static final String TRACE_END_GENERATE_SUMMARY_FILE_PASS_1 = "Fin de l'évaluation du nombre de documents";
 	private static final String TRACE_END_GENERATE_SUMMARY_FILE_PASS_2 = "Fin de génération du bordereau ";
+	private static final String TRACE_NO_ERROR_TO_WRITE = "Pas d'erreurs à écrire dans le fichier ";
+	private static final String TRACE_BEGIN_ERRORS_LIST = "Debut de la liste des erreurs";
+	private static final String TRACE_END_ERRORS_LIST = "Fin de la liste des erreurs";
 
 	private static final String ERROR_NODE_NOT_FOUND_1 = "Le noeud '";
 	private static final String ERROR_NODE_NOT_FOUND_2 = "' n'a pas été trouvé dans le profil '";
@@ -164,6 +167,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String ERRORS_NUMBER_1 = "Nombre d'erreurs : ";
 	private static final String ERRORS_NUMBER_2 = " pendant la génération du bordereau : ";
 	private static final String ERROR_PARSE_DATE = "La date n'a pa pu être récupérée";
+	private static final String ERRORS_IN_FILE = "ERREURS dans le fichier : ";
+	private static final String ERRORS_UNABLE_TO_WRITE_IN_FILE = "Impossible d'écrire les erreurs dans le fichier : ";
+	private static final String ERROR_TRANSFORMATION_FAILED = "La transformation a échoué : ";
+	private static final String ERROR_TEMP_DOESNT_EXIST_1 = "Le fichier temporaire ";
+	private static final String ERROR_TEMP_DOESNT_EXIST_2 = " n'existe plus.";
+	private static final String ERROR_RENAME_1 = "Impossible de renommer ";
+	private static final String ERROR_RENAME_2 = " en ";
 
 	// Récupération des informations liées à un couple (URI/ACCORD) en base de données.
 	private Sae sae;
@@ -1817,14 +1827,18 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		try {
 			transfo.transform(source, resultat);
 		} catch (TransformerException e) {
-			throw new TechnicalException("La transformation a échoué : " + e.getLocalizedMessage(), e);
+			throw new TechnicalException(ERROR_TRANSFORMATION_FAILED + e.getLocalizedMessage(), e);
 		}
 
 		// renomme le fichier avec son nom final
 		if (tempFile.exists()) {
-			tempFile.renameTo(new File(nomFichier));
+			boolean renameSucceded = tempFile.renameTo(new File(nomFichier));
+			if (!renameSucceded) {
+				throw new TechnicalException(ERROR_RENAME_1 + tempFile.getAbsolutePath() + ERROR_RENAME_2 + nomFichier);
+			}
 		} else {
-			throw new TechnicalException("Le fichier temporaire " + tempFile.getAbsolutePath() + " n'existe plus.");
+			throw new TechnicalException(ERROR_TEMP_DOESNT_EXIST_1 + tempFile.getAbsolutePath()
+					+ ERROR_TEMP_DOESNT_EXIST_2);
 		}
 	}
 
@@ -1866,11 +1880,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		if (archiveDocumentsLoaded) {
 			errorsListTotal.addAll(archiveDocuments.getErrorsList());
 		}
-		TRACESWRITER.debug("ERRORSLIST");
+		TRACESWRITER.debug(TRACE_BEGIN_ERRORS_LIST);
 		for (int i = 0; i < errorsListTotal.size(); i++) {
 			TRACESWRITER.debug(errorsListTotal.get(i));
 		}
-		TRACESWRITER.debug("ENDERRORSLIST");
+		TRACESWRITER.debug(TRACE_END_ERRORS_LIST);
 		return errorsListTotal;
 	}
 
@@ -1890,14 +1904,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 					writer.write(str + "\n");
 				}
 				writer.close();
-				TRACESWRITER.trace("ERREURS dans le fichier : " + filenameOutput);
+				TRACESWRITER.trace(ERRORS_IN_FILE + filenameOutput);
 			} catch (IOException e) {
-				throw new TechnicalException("Impossible d'écrire les erreurs dans le fichier : " + filenameOutput
-						+ " : " + e.getLocalizedMessage(), e);
+				throw new TechnicalException(ERRORS_UNABLE_TO_WRITE_IN_FILE + filenameOutput + " : "
+						+ e.getLocalizedMessage(), e);
 			}
 		} else {
 			existErrors = false;
-			TRACESWRITER.trace("Pas d'erreurs à écrire dans le fichier " + filenameOutput);
+			TRACESWRITER.trace(TRACE_NO_ERROR_TO_WRITE + filenameOutput);
 		}
 		return existErrors;
 	}

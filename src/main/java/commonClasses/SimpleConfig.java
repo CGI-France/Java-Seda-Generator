@@ -22,15 +22,27 @@ public class SimpleConfig {
 	private static final String BEGINNING_CAR = "#";
 	private static final String SECTION_GENERATOR = "generator";
 	private static final String SECTION_GENERATOR_AUTHORIZED_FILES = "trace|accord|data|rep_documents|baseURI|bordereau";
+	private static final String SECTION_ACCORD_VERSEMENT = "accord-versement";
+	private static final String SECTION_ACCORD_VERSEMENT_AUTHORIZED_FILES = "SAE_Serveur|TransferIdPrefix|SAE_ProfilArchivage|TransferringAgencyId|TransferringAgencyName|TransferringAgencyDesc|ArchivalAgencyId|ArchivalAgencyName|ArchivalAgencyDesc";
 	private static final String AUTHORIZED_FILES_REGEX_BEGIN = "^\\s*(";
-	private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(([a-zA-Z0-9]|_|-|:|\\.|/)+)\\s*$";
-	private static final String SECTION_REGEX = "^\\[([a-zA-z0-9]+)\\s*(:)+\\s*(([a-zA-z0-9]|-)+)\\]\\s*$";
+	// private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(([a-zA-Z0-9]|_|-|:|\\.|/)+)\\s*$";
+	private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(.*)\\s*$";
+	private static final String SECTION_REGEX = "^\\[([a-zA-z0-9-]+)\\s*(:)+\\s*(([a-zA-z0-9]|-)+)\\]\\s*$";
 	private static final String SUBSECTION_TRACE = "trace";
 	private static final String SUBSECTION_ACCORD = "accord";
 	private static final String SUBSECTION_DATA = "data";
 	private static final String SUBSECTION_REP_DOCUMENTS = "rep_documents";
 	private static final String SUBSECTION_BASE_URI = "baseURI";
 	private static final String SUBSECTION_BORDEREAU = "bordereau";
+	private static final String SUBSECTION_SAE_SERVEUR = "SAE_Serveur";
+	private static final String SUBSECTION_TRANSFER_ID_PREFIX = "TransferIdPrefix";
+	private static final String SUBSECTION_SAE_PROFIL_ARCHIVAGE = "SAE_ProfilArchivage";
+	private static final String SUBSECTION_TRANSFERRING_AGENCY_ID = "TransferringAgencyId";
+	private static final String SUBSECTION_TRANSFERRING_AGENCY_NAME = "TransferringAgencyName";
+	private static final String SUBSECTION_TRANSFERRING_AGENCY_DESC = "TransferringAgencyDesc";
+	private static final String SUBSECTION_ARCHIVAL_AGENCY_ID = "ArchivalAgencyId";
+	private static final String SUBSECTION_ARCHIVAL_AGENCY_NAME = "ArchivalAgencyName";
+	private static final String SUBSECTION_ARCHIVAL_AGENCY_DESC = "ArchivalAgencyDesc";
 
 	private static final String ENCODAGE = "UTF8";
 	private static final String UTF8_BOM = "\uFEFF";
@@ -47,6 +59,7 @@ public class SimpleConfig {
 	private ArrayList<String> errorsList;
 
 	private ArrayList<GeneratorConfig> generatorList;
+	private ArrayList<AccordVersementConfig> accordVersementConfigList;
 
 	private String section;
 	private String sectionName;
@@ -57,11 +70,21 @@ public class SimpleConfig {
 	private String baseURI;
 	private String bordereauFile;
 	private String accordVersement;
+	private String saeServeur;
+	private String transferIdPrefix;
+	private String saeProfilArchivage;
+	private String transferringAgencyId;
+	private String transferringAgencyName;
+	private String transferringAgencyDesc;
+	private String archivalAgencyId;
+	private String archivalAgencyName;
+	private String archivalAgencyDesc;
 	private boolean inSection = false;
 
 	public SimpleConfig() {
 		errorsList = new ArrayList<String>();
 		generatorList = new ArrayList<GeneratorConfig>();
+		accordVersementConfigList = new ArrayList<AccordVersementConfig>();
 	}
 
 	/**
@@ -84,6 +107,21 @@ public class SimpleConfig {
 	private void doSection() {
 		if (inSection) {
 			switch (section) {
+			case SECTION_ACCORD_VERSEMENT:
+				AccordVersementConfig paccord = new AccordVersementConfig();
+				paccord.setAccordVersement(sectionName);
+				paccord.setSaeServeur(saeServeur);
+				;
+				paccord.setTransferIdPrefix(transferIdPrefix);
+				paccord.setSaeProfilArchivage(saeProfilArchivage);
+				paccord.setTransferringAgencyId(transferringAgencyId);
+				paccord.setTransferringAgencyName(transferringAgencyName);
+				paccord.setTransferringAgencyDesc(transferringAgencyDesc);
+				paccord.setArchivalAgencyId(archivalAgencyId);
+				paccord.setArchivalAgencyName(archivalAgencyName);
+				paccord.setArchivalAgencyDesc(archivalAgencyDesc);
+				accordVersementConfigList.add(paccord);
+				break;
 			case SECTION_GENERATOR:
 				GeneratorConfig generator = new GeneratorConfig();
 				generator.nomJob = sectionName;
@@ -112,7 +150,7 @@ public class SimpleConfig {
 		Pattern fileRegex = null;
 		Matcher m;
 		String line;
-		String authorizedFiles;
+		String authorizedKeys;
 		String errMsg;
 		String g;
 
@@ -135,10 +173,12 @@ public class SimpleConfig {
 								doSection();
 							}
 							section = m.group(1);
-							authorizedFiles = StringUtils.EMPTY;
+							authorizedKeys = StringUtils.EMPTY;
 							inSection = true;
 							if (SECTION_GENERATOR.equals(section)) {
-								authorizedFiles = SECTION_GENERATOR_AUTHORIZED_FILES;
+								authorizedKeys = SECTION_GENERATOR_AUTHORIZED_FILES;
+							} else if (SECTION_ACCORD_VERSEMENT.equals(section)) {
+								authorizedKeys = SECTION_ACCORD_VERSEMENT_AUTHORIZED_FILES;
 							} else {
 								errMsg = new StringBuilder().append(ERROR_CONFIG_SECTION_1).append(section)
 										.append(ERROR_CONFIG_SECTION_2).toString();
@@ -155,8 +195,19 @@ public class SimpleConfig {
 								repDocuments = StringUtils.EMPTY;
 								baseURI = StringUtils.EMPTY;
 								accordVersement = StringUtils.EMPTY;
+								saeServeur = StringUtils.EMPTY;
+								transferIdPrefix = StringUtils.EMPTY;
+								saeProfilArchivage = StringUtils.EMPTY;
+								transferringAgencyId = StringUtils.EMPTY;
+								transferringAgencyName = StringUtils.EMPTY;
+								transferringAgencyDesc = StringUtils.EMPTY;
+								archivalAgencyId = StringUtils.EMPTY;
+								archivalAgencyName = StringUtils.EMPTY;
+								archivalAgencyDesc = StringUtils.EMPTY;
+								// fileRegex = Pattern.compile(new StringBuilder().append(AUTHORIZED_FILES_REGEX_BEGIN)
+								// .append(authorizedKeys).append(AUTHORIZED_FILES_REGEX_END).toString());
 								fileRegex = Pattern.compile(new StringBuilder().append(AUTHORIZED_FILES_REGEX_BEGIN)
-										.append(authorizedFiles).append(AUTHORIZED_FILES_REGEX_END).toString());
+										.append(authorizedKeys).append(AUTHORIZED_FILES_REGEX_END).toString());
 							}
 						} else {
 							if (inSection) {
@@ -182,6 +233,33 @@ public class SimpleConfig {
 									case SUBSECTION_BORDEREAU:
 										bordereauFile = m.group(2);
 										break;
+									case SUBSECTION_SAE_SERVEUR:
+										saeServeur = m.group(2);
+										break;
+									case SUBSECTION_TRANSFER_ID_PREFIX:
+										transferIdPrefix = m.group(2);
+										break;
+									case SUBSECTION_SAE_PROFIL_ARCHIVAGE:
+										saeProfilArchivage = m.group(2);
+										break;
+									case SUBSECTION_TRANSFERRING_AGENCY_ID:
+										transferringAgencyId = m.group(2);
+										break;
+									case SUBSECTION_TRANSFERRING_AGENCY_NAME:
+										transferringAgencyName = m.group(2);
+										break;
+									case SUBSECTION_TRANSFERRING_AGENCY_DESC:
+										transferringAgencyDesc = m.group(2);
+										break;
+									case SUBSECTION_ARCHIVAL_AGENCY_ID:
+										archivalAgencyId = m.group(2);
+										break;
+									case SUBSECTION_ARCHIVAL_AGENCY_NAME:
+										archivalAgencyName = m.group(2);
+										break;
+									case SUBSECTION_ARCHIVAL_AGENCY_DESC:
+										archivalAgencyDesc = m.group(2);
+										break;
 									}
 								}
 							}
@@ -202,9 +280,38 @@ public class SimpleConfig {
 	}
 
 	private static String removeUTF8BOM(String s) {
+
 		if (s.startsWith(UTF8_BOM)) {
 			s = s.substring(1);
 		}
 		return s;
+	}
+
+	/**
+	 * Vérifie s'il y a des accords de versement
+	 *
+	 * @return true si des accords de versement existent
+	 */
+	public boolean hasAccordVersementConfig() {
+
+		return accordVersementConfigList.size() > 0;
+	}
+
+	/**
+	 * Retourne l'accord de versement demandé pour un SAE donné
+	 * 
+	 * @param accordName nom de l'accord de versement
+	 * @param SAE_Serveur nom du SAE
+	 * @return AccordVersementConfig correspondant à la configuration qu'on souhaite.
+	 */
+	public AccordVersementConfig getAccordVersementConfig(String accordName, String SAE_Serveur) {
+		AccordVersementConfig result = null;
+		for (AccordVersementConfig a : accordVersementConfigList) {
+			if (a.getAccordVersement().equals(accordName) && a.getSaeServeur().equals(SAE_Serveur)) {
+				result = a;
+				break;
+			}
+		}
+		return result;
 	}
 }

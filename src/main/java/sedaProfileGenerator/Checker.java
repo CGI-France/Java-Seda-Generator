@@ -8,7 +8,11 @@ import org.apache.commons.lang.StringUtils;
 
 public final class Checker {
 	private static final String DB_URL_PATTERN = "jdbc:postgresql://.*";
-
+	private static final String BOOLEAN_TRUE = "true";
+	private static final String BOOLEAN_FALSE = "false";
+	
+	private static final String ERROR_BOOLEAN = "true or false attendu";
+	
 	private Checker() {
 
 	}
@@ -57,6 +61,13 @@ public final class Checker {
 		if (parentFile != null) {
 			checkFolder(parentFile.getAbsolutePath());
 		} // Sinon le fichier sera créé à la racine du lancement, donc le fichier pourra être créé.
+	}
+	
+	public static void checkBoolean(String booleanTest) {
+		
+		if(!(StringUtils.equals(BOOLEAN_FALSE, booleanTest) || StringUtils.equals(BOOLEAN_TRUE, booleanTest))) {
+			throw new IllegalArgumentException(ERROR_BOOLEAN);
+		}
 	}
 
 }

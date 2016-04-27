@@ -1,23 +1,29 @@
 package unit;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import sedaProfileGenerator.Checker;
 import sedaProfileGenerator.SedaSummaryRngGenerator;
+
+import commonClasses.SimpleConfig;
+
+import dao.ConfigFileDao;
 import dao.SedaSummaryRngGeneratorDao;
 import exception.TechnicalException;
 
 public class SedaGeneratorUnit {
 	private static final Logger TRACESWRITER = LoggerFactory.getLogger(SedaGeneratorUnit.class);
-	private static final Integer DEFAULT_NB_ARG = 7;
+	private static final Integer DEFAULT_NB_ARG = 8;
 	public static final String ERR_EXTENSION = ".err";
 
 	private static final String ERROR_WAITING_ARGUMENTS_1 = "On attend ";
-	private static final String ERROR_WAITING_ARGUMENTS_2 = " arguments (propertiesLocation, uri, agreement, archiveFolder, dataFile, outSummary, outSummaryError), ";
+	private static final String ERROR_WAITING_ARGUMENTS_2 = " arguments (propertiesLocation, configLocation, uri, agreement, archiveFolder, dataFile, outSummary, outSummaryError), ";
 	private static final String ERROR_WAITING_ARGUMENTS_3 = " ont étés passés.";
 	private static final String ERROR_GENERATING_1 = "Erreurs lors de la tentative de génération de ";
 	private static final String ERROR_GENERATING_2 = ", impossible de les écrire dans le fichier ";
+	private static final String ERROR_NEITHER_CONFIG_NOR_BDD = "Il n'y a ni fichier de configuration ayant une section accord-versement ni de base de données de paramétrés.";
 
 	private static final String TRACE_BEGIN_PRODUIRE_BEGIN_URL = "Début de produireBordereauVersement(url=";
 	private static final String TRACE_BEGIN_PRODUIRE_USER = "; user=";
@@ -27,8 +33,12 @@ public class SedaGeneratorUnit {
 	private static final String TRACE_BEGIN_PRODUIRE_DATA_PATH = "; dataPath=";
 	private static final String TRACE_BEGIN_PRODUIRE_SUMMARY_PATH = "; summaryPath=";
 	private static final String TRACE_BEGIN_PRODUIRE_SUMMARY_PATH_ERROR = "; summaryPathError=";
+	private static final String TRACE_BEGIN_CONF_PRODUIRE_BEGIN_URL = "Début de produireBordereauVersement avec ce fichier de configuration : ";
 
 	private SedaGeneratorProperties properties;
+	private String configFilePath;
+	private boolean hasAccordVersementConfig = false;
+	private SimpleConfig simpleConfig;
 	private String url;
 	private String user;
 	private String passwd;
@@ -39,10 +49,32 @@ public class SedaGeneratorUnit {
 	private String summaryPath;
 	private String summaryPathError;
 
-	public SedaGeneratorUnit(String sedaGeneratorPropertiesLocation, String uriLocal, String agreementLocal,
-			String folderArchivePathLocal, String dataPathLocal, String summaryPathLocal, String summaryPathErrorLocal)
-			throws TechnicalException {
-		Checker.checkFile(sedaGeneratorPropertiesLocation);
+	public SedaGeneratorUnit(String sedaGeneratorPropertiesLocation, String configFilePath, String uriLocal,
+			String agreementLocal, String folderArchivePathLocal, String dataPathLocal, String summaryPathLocal,
+			String summaryPathErrorLocal) throws TechnicalException {
+
+		if (StringUtils.isNotEmpty(configFilePath)) {
+			Checker.checkFile(configFilePath);
+			this.simpleConfig = new SimpleConfig();
+			this.simpleConfig.loadFile(configFilePath);
+			if (this.simpleConfig.hasAccordVersementConfig()) {
+				this.hasAccordVersementConfig = true;
+			}
+		}
+
+		// S'il n'y a pas de fichier de configuration avec accord de versement, on utilise la base de données
+		if (!this.hasAccordVersementConfig) {
+			Checker.checkFile(sedaGeneratorPropertiesLocation);
+			this.properties = new SedaGeneratorProperties(sedaGeneratorPropertiesLocation);
+			this.url = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_URL.toString());
+			this.user = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_USER.toString());
+			this.passwd = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_PASSWD.toString());
+			// On vérifie les propriétés venant du fichier de propriété
+			Checker.checkDbUrl(this.url);
+			Checker.checkString(this.user);
+			Checker.checkString(this.passwd);
+		}
+
 		Checker.checkString(uriLocal); // Rien n'empêche que ce soit juste une chaîne de caractères, il suffit qu'elle
 										// mappe la valeur en BDD.
 		Checker.checkString(agreementLocal);
@@ -53,10 +85,7 @@ public class SedaGeneratorUnit {
 		Checker.checkParentFolder(summaryPathErrorLocal); // On vérifie que le dossier devant contenir le fichier
 															// d'erreur existe
 
-		this.properties = new SedaGeneratorProperties(sedaGeneratorPropertiesLocation);
-		this.url = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_URL.toString());
-		this.user = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_USER.toString());
-		this.passwd = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_PASSWD.toString());
+		this.configFilePath = configFilePath;
 		this.uri = uriLocal;
 		this.agreement = agreementLocal;
 		this.folderArchivePath = folderArchivePathLocal;
@@ -64,15 +93,11 @@ public class SedaGeneratorUnit {
 		this.summaryPath = summaryPathLocal;
 		this.summaryPathError = summaryPathErrorLocal;
 
-		// On vérifie les propriétés venant du fichier de propriété
-		Checker.checkDbUrl(this.url);
-		Checker.checkString(this.user);
-		Checker.checkString(this.passwd);
-
 	}
 
 	public static void main(String[] args) {
 		String sedaGeneratorPropertiesLocation;
+		String configFilePath;
 		String uriLocal;
 		String agreementLocal;
 		String folderArchivePathLocal;
@@ -83,14 +108,15 @@ public class SedaGeneratorUnit {
 		if (args.length == DEFAULT_NB_ARG) {
 			try {
 				sedaGeneratorPropertiesLocation = args[0];
-				uriLocal = args[1];
-				agreementLocal = args[2];
-				folderArchivePathLocal = args[3];
-				dataPathLocal = args[4];
-				summaryPathLocal = args[5];
-				summaryPathErrorLocal = args[6];
-				sedaGeneratorUnit = new SedaGeneratorUnit(sedaGeneratorPropertiesLocation, uriLocal, agreementLocal,
-						folderArchivePathLocal, dataPathLocal, summaryPathLocal, summaryPathErrorLocal);
+				configFilePath = args[1];
+				uriLocal = args[2];
+				agreementLocal = args[3];
+				folderArchivePathLocal = args[4];
+				dataPathLocal = args[5];
+				summaryPathLocal = args[6];
+				summaryPathErrorLocal = args[7];
+				sedaGeneratorUnit = new SedaGeneratorUnit(sedaGeneratorPropertiesLocation, configFilePath, uriLocal,
+						agreementLocal, folderArchivePathLocal, dataPathLocal, summaryPathLocal, summaryPathErrorLocal);
 				sedaGeneratorUnit.produireBordereauVersement();
 			} catch (TechnicalException e) {
 				TRACESWRITER.error(e.getLocalizedMessage());
@@ -112,22 +138,37 @@ public class SedaGeneratorUnit {
 	 * 
 	 */
 	public void produireBordereauVersement() throws TechnicalException {
-		Checker.checkString(this.url);
-		Checker.checkString(this.user);
-		Checker.checkString(this.passwd);
-
-		TRACESWRITER.trace(TRACE_BEGIN_PRODUIRE_BEGIN_URL + url + TRACE_BEGIN_PRODUIRE_USER + this.user
-				+ TRACE_BEGIN_PRODUIRE_URI + this.uri + TRACE_BEGIN_PRODUIRE_AGREEMENT + agreement
-				+ TRACE_BEGIN_PRODUIRE_FOLDER_ARCHIVE_PATH + this.folderArchivePath + TRACE_BEGIN_PRODUIRE_DATA_PATH
-				+ this.dataPath + TRACE_BEGIN_PRODUIRE_SUMMARY_PATH + this.summaryPath
-				+ TRACE_BEGIN_PRODUIRE_SUMMARY_PATH_ERROR + this.summaryPathError);
-
 		SedaSummaryRngGenerator ssg = new SedaSummaryRngGenerator();
-		ssg.setSedaSummaryRngGeneratorDao(new SedaSummaryRngGeneratorDao(url, user, passwd));
-		try {
-			ssg.processData(uri, agreement, folderArchivePath, dataPath, summaryPath);
-		} catch (TechnicalException e) {
-			ssg.addErrorsList(e.getLocalizedMessage());
+
+		// S'il existe un fichier de configuration avec une section accord-versement, on l'utilise
+		if (this.hasAccordVersementConfig) {
+
+			TRACESWRITER.trace(TRACE_BEGIN_CONF_PRODUIRE_BEGIN_URL + this.configFilePath);
+			ssg.setSedaSummaryRngGeneratorDao(new ConfigFileDao(this.simpleConfig, this.dataPath, ssg));
+
+		} else {
+
+			Checker.checkString(this.url);
+			Checker.checkString(this.user);
+			Checker.checkString(this.passwd);
+
+			TRACESWRITER.trace(TRACE_BEGIN_PRODUIRE_BEGIN_URL + url + TRACE_BEGIN_PRODUIRE_USER + this.user
+					+ TRACE_BEGIN_PRODUIRE_URI + this.uri + TRACE_BEGIN_PRODUIRE_AGREEMENT + agreement
+					+ TRACE_BEGIN_PRODUIRE_FOLDER_ARCHIVE_PATH + this.folderArchivePath
+					+ TRACE_BEGIN_PRODUIRE_DATA_PATH + this.dataPath + TRACE_BEGIN_PRODUIRE_SUMMARY_PATH
+					+ this.summaryPath + TRACE_BEGIN_PRODUIRE_SUMMARY_PATH_ERROR + this.summaryPathError);
+
+			ssg.setSedaSummaryRngGeneratorDao(new SedaSummaryRngGeneratorDao(url, user, passwd));
+		}
+
+		if (ssg.getSedaSummaryRngGeneratorDao() == null) {
+			throw new TechnicalException(ERROR_NEITHER_CONFIG_NOR_BDD);
+		} else {
+			try {
+				ssg.processData(uri, agreement, folderArchivePath, dataPath, summaryPath);
+			} catch (TechnicalException e) {
+				ssg.addErrorsList(e.getLocalizedMessage());
+			}
 		}
 		try {
 			boolean existsErrors = ssg.writeErrorsIfExist(summaryPathError);

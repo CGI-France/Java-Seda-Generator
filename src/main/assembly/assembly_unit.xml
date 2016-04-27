@@ -15,6 +15,17 @@
 			<outputDirectory>/</outputDirectory>
 			<includes>
 				<include>*_unit.sh</include>
+				<include>*_config.sh</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+		
+		<fileSet>
+			<directory>src/main/bat</directory>
+			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>*_unit.bat</include>
+				<include>*_config.bat</include>
 			</includes>
 			<filtered>true</filtered>
 		</fileSet>
@@ -42,8 +53,21 @@
 			<outputDirectory>/</outputDirectory>
 			<includes>
 				<include>sedaGeneratorUnit.properties</include>
+				<include>job.config</include>
 			</includes>
 			<filtered>true</filtered>
+		</fileSet>
+		
+		<fileSet>
+			<directory>src/main/resources/RACINE</directory>
+			<outputDirectory>/RACINE</outputDirectory>
+			<excludes>
+				<exclude>bordereaux/.gitkeep</exclude>
+				<exclude>documents/.gitkeep</exclude>
+				<exclude>metier/.gitkeep</exclude>
+				<exclude>profils/.gitkeep</exclude>
+				<exclude>traces/.gitkeep</exclude>
+			</excludes>
 		</fileSet>
 		
 		<fileSet>
