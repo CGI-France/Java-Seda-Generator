@@ -1,5 +1,6 @@
 package unit;
 
+import commonClasses.GeneratorConfig;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +17,13 @@ import exception.TechnicalException;
 public class SedaGeneratorUnit {
 	private static final Logger TRACESWRITER = LoggerFactory.getLogger(SedaGeneratorUnit.class);
 	private static final Integer DEFAULT_NB_ARG = 8;
+	private static final Integer TASK_NB_ARG = 3;
 	public static final String ERR_EXTENSION = ".err";
 
 	private static final String ERROR_WAITING_ARGUMENTS_1 = "On attend ";
-	private static final String ERROR_WAITING_ARGUMENTS_2 = " arguments (propertiesLocation, configLocation, uri, agreement, archiveFolder, dataFile, outSummary, outSummaryError), ";
-	private static final String ERROR_WAITING_ARGUMENTS_3 = " ont étés passés.";
+	private static final String ERROR_WAITING_ARGUMENTS_2 = " ou ";
+	private static final String ERROR_WAITING_ARGUMENTS_3 = " arguments ((propertiesLocation, configLocation, task OU propertiesLocation, configLocation, uri, agreement, archiveFolder, dataFile, outSummary, outSummaryError), ";
+	private static final String ERROR_WAITING_ARGUMENTS_4 = " ont étés passés.";
 	private static final String ERROR_GENERATING_1 = "Erreurs lors de la tentative de génération de ";
 	private static final String ERROR_GENERATING_2 = ", impossible de les écrire dans le fichier ";
 	private static final String ERROR_NEITHER_CONFIG_NOR_BDD = "Il n'y a ni fichier de configuration ayant une section accord-versement ni de base de données de paramétrés.";
@@ -95,9 +98,57 @@ public class SedaGeneratorUnit {
 
 	}
 
+	public SedaGeneratorUnit(String sedaGeneratorPropertiesLocation, String configFilePath, String task) 
+            throws TechnicalException {
+
+		if (StringUtils.isNotEmpty(configFilePath)) {
+			Checker.checkFile(configFilePath);
+			this.simpleConfig = new SimpleConfig();
+			this.simpleConfig.loadFile(configFilePath);
+			if (this.simpleConfig.hasAccordVersementConfig()) {
+				this.hasAccordVersementConfig = true;
+			}
+		}
+
+		// S'il n'y a pas de fichier de configuration avec accord de versement, on utilise la base de données
+		if (!this.hasAccordVersementConfig) {
+			Checker.checkFile(sedaGeneratorPropertiesLocation);
+			this.properties = new SedaGeneratorProperties(sedaGeneratorPropertiesLocation);
+			this.url = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_URL.toString());
+			this.user = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_USER.toString());
+			this.passwd = this.properties.getProperty(SedaGeneratorPropertiesEnum.DATABASE_PASSWD.toString());
+			// On vérifie les propriétés venant du fichier de propriété
+			Checker.checkDbUrl(this.url);
+			Checker.checkString(this.user);
+			Checker.checkString(this.passwd);
+		}
+
+        GeneratorConfig generator = this.simpleConfig.getGeneratorConfig(task);
+        if (generator != null) {
+            Checker.checkString(generator.getBaseURI()); // Rien n'empêche que ce soit juste une chaîne de caractères, il suffit qu'elle
+                                            // mappe la valeur en BDD.
+            Checker.checkString(generator.getAccordVersement());
+            Checker.checkFolder(generator.getRepDocuments());
+            Checker.checkFile(generator.getDataFile());
+            Checker.checkParentFolder(generator.getBordereauFile()); // On vérifie que le dossier devant contenir le bordereau de sortie
+                                                            // existe
+            Checker.checkParentFolder(generator.getTraceFile()); // On vérifie que le dossier devant contenir le fichier
+															// d'erreur existe
+
+            this.configFilePath = configFilePath;
+            this.uri = generator.getBaseURI();
+            this.agreement = generator.getAccordVersement();
+            this.folderArchivePath = generator.getRepDocuments();
+            this.dataPath = generator.getDataFile();
+            this.summaryPath = generator.getBordereauFile();
+            this.summaryPathError = generator.getTraceFile();
+        }
+	}
+
 	public static void main(String[] args) {
 		String sedaGeneratorPropertiesLocation;
 		String configFilePath;
+		String task;
 		String uriLocal;
 		String agreementLocal;
 		String folderArchivePathLocal;
@@ -125,9 +176,24 @@ public class SedaGeneratorUnit {
 				TRACESWRITER.error(e.getLocalizedMessage());
 				System.exit(1);
 			}
+		} else if (args.length == TASK_NB_ARG) {
+			try {
+				sedaGeneratorPropertiesLocation = args[0];
+				configFilePath = args[1];
+				task = args[2];
+				sedaGeneratorUnit = new SedaGeneratorUnit(sedaGeneratorPropertiesLocation, configFilePath, task) ;
+				sedaGeneratorUnit.produireBordereauVersement();
+			} catch (TechnicalException e) {
+				TRACESWRITER.error(e.getLocalizedMessage());
+				System.exit(1);
+			} catch (IllegalArgumentException e) {
+				TRACESWRITER.error(e.getLocalizedMessage());
+				System.exit(1);
+			}
 		} else {
-			TRACESWRITER.error(ERROR_WAITING_ARGUMENTS_1 + DEFAULT_NB_ARG + ERROR_WAITING_ARGUMENTS_2 + args.length
-					+ ERROR_WAITING_ARGUMENTS_3);
+			TRACESWRITER.error(ERROR_WAITING_ARGUMENTS_1 + TASK_NB_ARG + ERROR_WAITING_ARGUMENTS_2 +
+                    DEFAULT_NB_ARG + ERROR_WAITING_ARGUMENTS_3 +
+                    args.length + ERROR_WAITING_ARGUMENTS_4);
 			System.exit(1);
 		}
 	}
