@@ -118,6 +118,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String KEY_FILEPLANPOSITION = "FilePlanPosition";
 	private static final String KEY_ORIGINATINGAGENCY = "OriginatingAgency";
 	private static final String KEY_KEYWORDCONTENT = "KeywordContent";
+	private static final String KEY_CONTAINSNAME = "ContainsName";
 	private static final String KEY_CONTAINS = "Contains";
 	private static final String KEY_NAME = "Name";
 	private static final String KEY_TAG_SEPARATOR = ".";
@@ -174,6 +175,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String ERROR_TEMP_DOESNT_EXIST_2 = " n'existe plus.";
 	private static final String ERROR_RENAME_1 = "Impossible de renommer ";
 	private static final String ERROR_RENAME_2 = " en ";
+	private static final String ERROR_DELETE = "Impossible de supprimer ";
 
 	// Récupération des informations liées à un couple (URI/ACCORD) en base de données.
 	private Sae sae;
@@ -1217,9 +1219,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 																	// 1.0
 						|| context.endsWith("/Contains/Contains/Name")) { // SEDA
 																			// .02
-					dataString = archiveDocuments.getKeyValue(KEY_CONTAINS + KEY_TAG_SEPARATOR + KEY_NAME
-							+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
-							+ CsvArchiveDocuments.END_TAG_CAR);
+					dataString = archiveDocuments.getKeyValue(KEY_CONTAINSNAME + CsvArchiveDocuments.BEGINNING_TAG_CAR
+							+ currentContainsNode.getRelativeContext() + CsvArchiveDocuments.END_TAG_CAR);
 				} else if (context.endsWith("/ArchiveObject/ArchivalAgencyObjectIdentifier") // SEDA
 																								// 1.0
 						|| context.endsWith("/Contains/ArchivalAgencyObjectIdentifier") // SEDA
@@ -1832,6 +1833,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 		// renomme le fichier avec son nom final
 		if (tempFile.exists()) {
+			File newFileExpected = new File(nomFichier);
+			if (newFileExpected.exists()) {
+				boolean deleteSucceded = newFileExpected.delete();
+				if (!deleteSucceded) {
+					throw new TechnicalException(ERROR_DELETE + newFileExpected.getAbsolutePath());
+				}
+			}
 			boolean renameSucceded = tempFile.renameTo(new File(nomFichier));
 			if (!renameSucceded) {
 				throw new TechnicalException(ERROR_RENAME_1 + tempFile.getAbsolutePath() + ERROR_RENAME_2 + nomFichier);
