@@ -114,10 +114,12 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String KEY_TRANSFERNAME = "TransferName";
 	private static final String KEY_COMMENT = "Comment";
 	private static final String KEY_CUSTODIALHISTORY = "CustodialHistory";
+	private static final String KEY_CONTENTDESCRIPTION = "ContentDescription";
 	private static final String KEY_DESCRIPTION = "Description";
 	private static final String KEY_FILEPLANPOSITION = "FilePlanPosition";
 	private static final String KEY_ORIGINATINGAGENCY = "OriginatingAgency";
 	private static final String KEY_KEYWORDCONTENT = "KeywordContent";
+	private static final String KEY_CONTAINSNAME = "ContainsName";
 	private static final String KEY_CONTAINS = "Contains";
 	private static final String KEY_NAME = "Name";
 	private static final String KEY_TAG_SEPARATOR = ".";
@@ -778,7 +780,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 																														// name="ContentDescriptive"
 
 													if (dataNode != null) {
-														keywordReferenceSchemeID = getKeywordReferenceSchemeId(dataNode);
+														keywordReferenceSchemeID = getKeywordReferenceSchemeId(dataNode, context);
 													}
 
 													int nbKeywords = archiveDocuments.getNbkeys(NOEUD_KEYWORDCONTENT,
@@ -1177,14 +1179,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				break;
 			case "/ArchiveTransfer/Archive/ContentDescription/Description": // SEDA 1.0
 			case "/ArchiveTransfer/Contains/ContentDescription/Description": // SEDA 0.2
-				dataString = archiveDocuments.getKeyValue(KEY_DESCRIPTION);
+				dataString = archiveDocuments.getKeyValue(KEY_CONTENTDESCRIPTION + KEY_TAG_SEPARATOR + KEY_DESCRIPTION);
 				break;
 			case "/ArchiveTransfer/Archive/ContentDescription/Keyword/KeywordContent": // SEDA
 																						// 1.0
 			case "/ArchiveTransfer/Contains/ContentDescription/ContentDescriptive/KeywordContent": // SEDA
 																									// 0.2
 				String keywordReferenceSchemeID = null;
-				keywordReferenceSchemeID = getKeywordReferenceSchemeId(node);
+				keywordReferenceSchemeID = getKeywordReferenceSchemeId(node, context);
 				if (multipleSearch) {
 					dataString = archiveDocuments.getNextKeyValue(KEY_KEYWORDCONTENT, null, keywordReferenceSchemeID);
 					// multipleSearch = false;
@@ -1217,7 +1219,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 																	// 1.0
 						|| context.endsWith("/Contains/Contains/Name")) { // SEDA
 																			// .02
-					dataString = archiveDocuments.getKeyValue(KEY_CONTAINS + KEY_TAG_SEPARATOR + KEY_NAME
+					dataString = archiveDocuments.getKeyValue(KEY_CONTAINSNAME
 							+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
 							+ CsvArchiveDocuments.END_TAG_CAR);
 				} else if (context.endsWith("/ArchiveObject/ArchivalAgencyObjectIdentifier") // SEDA
@@ -1232,7 +1234,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 						|| context.endsWith("Contains/ContentDescription/ContentDescriptive/KeywordContent")) { // SEDA
 																												// 0.2
 					String keywordReferenceSchemeIDDefault = null;
-					keywordReferenceSchemeIDDefault = getKeywordReferenceSchemeId(node);
+					keywordReferenceSchemeIDDefault = getKeywordReferenceSchemeId(node, context);
 					if (multipleSearch) {
 						dataString = archiveDocuments.getNextKeyValue(KEY_KEYWORDCONTENT,
 								ROOT.equals(currentDocumentTypeId) ? null : currentContainsNode.getRelativeContext(),
@@ -1256,7 +1258,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 						// 1.0
 						|| context.endsWith("Contains/ContentDescription/Description")) { // SEDA
 					// 0.2
-					dataString = archiveDocuments.getKeyValue(KEY_DESCRIPTION + CsvArchiveDocuments.BEGINNING_TAG_CAR
+					dataString = archiveDocuments.getKeyValue(KEY_CONTENTDESCRIPTION + KEY_TAG_SEPARATOR + KEY_DESCRIPTION + CsvArchiveDocuments.BEGINNING_TAG_CAR
 							+ currentContainsNode.getRelativeContext() + CsvArchiveDocuments.END_TAG_CAR);
 				} else if (context.endsWith("ContentDescription/FilePlanPosition") // SEDA
 						// 1.0
@@ -1305,7 +1307,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * @param dataNode : noeud rng:data du mot-clé
 	 * @return String schemeId ou "" si non trouvé.
 	 */
-	private String getKeywordReferenceSchemeId(Node dataNode) throws TechnicalException {
+	private String getKeywordReferenceSchemeId(Node dataNode, String context) throws TechnicalException {
 		String result;
 		Node parentDefineNode;
 		String nameParentDefineNode;
@@ -1367,7 +1369,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		}
 
-		return result;
+		return getDocumentTypeId(result, context);
 	}
 
 	/**
