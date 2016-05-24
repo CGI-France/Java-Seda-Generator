@@ -1,0 +1,3 @@
+Changements du 2016-05-24
+- Correction erreur en version 1.0 du SEDA sur gestion de l'identification des documents
+

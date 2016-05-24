@@ -76,8 +76,12 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String NOEUD_ARCHIVETRANSFER = "ArchiveTransfer";
 	private static final String NOEUD_UNITIDENTIFIER = "UnitIdentifier";
 	private static final String NOEUD_INTEGRITY = "Integrity";
+    private static final String NOEUD_ARCHIVALAGENCYDOCUMENTIDENTIFIER = "ArchivalAgencyDocumentIdentifier";
+    private static final String NOEUD_IDENTIFICATION = "Identification";
 
 	// Attributs SEDA
+    private static final String SEDA_VERSION_02 = "fr:gouv:ae:archive:draft:standard_echange_v0.2";
+    private static final String SEDA_VERSION_10 = "fr:gouv:culture:archivesdefrance:seda:v1.0";
 	private static final String ATTR_NAME_FILENAME = "filename";
 	private static final String ATTR_NAME_ALGORITHME = "algorithme";
 	private static final String ATTR_NAME_SCHEME_ID = "schemeID";
@@ -87,6 +91,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String NODE_VALUE_ANY_ELEMENT = "anyElement";
 	private static final String COMMENT = "#comment";
 	private static final String ITEM_NAME = "name";
+	private static final String ITEM_NS = "ns";
 	private static final String UNITCODE_NAME = "unitCode";
 	private static final String UNITCODE_E36 = "E36";
 	private static final String UNITCODE_E35 = "E35";
@@ -185,6 +190,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private Document docIn;
 	private Document docOut;
 	private Node grammarNode;
+    private String SEDA_version;
 
 	// La génération se fait en deux passes, durant la première on calcule le nombre de documents par unité documentaire
 	// les erreurs sont inhibées durant cette phase
@@ -363,6 +369,18 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				startNode = nodes.item(0);
 			}
 			if (grammarNode != null && startNode != null) {
+                    // SEDA 1.0 "fr:gouv:culture:archivesdefrance:seda:v1.0"
+                    // SEDA 0.2 "fr:gouv:ae:archive:draft:standard_echange_v0.2"
+                    String sTestSeda = grammarNode.getAttributes().getNamedItem(ITEM_NS).getNodeValue();
+                    if (SEDA_VERSION_02.equals(sTestSeda)) {
+                        SEDA_version = "0.2";
+                    } else
+                        if (SEDA_VERSION_10.equals(sTestSeda)) {
+                            SEDA_version = "1.0";
+                        } else {
+                            SEDA_version = "Version du SEDA inconnue";
+                            logAndAddErrorsList("Version du SEDA inconnue : '" + sTestSeda + "'");
+                        }
 				recurseDefine(startNode.getAttributes().getNamedItem(ITEM_NAME).getNodeValue(), "");
 			} else {
 				// On pourrait tracer l'erreur seulement quand currentPass = 2
@@ -603,10 +621,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		if (firstStep != null) {
 			xPath = XPathFactory.newInstance().newXPath();
 			try {
+                String stDocumentIdentification = SEDA_version == "1.0" 
+                        ? NOEUD_ARCHIVALAGENCYDOCUMENTIDENTIFIER : NOEUD_IDENTIFICATION;
 				thirdNodeList = (NodeList) xPath
 						.evaluate("/grammar/define[@name='"
 								+ firstStep.getAttributes().getNamedItem("name").getNodeValue()
-								+ "']//element[@name='Identification']/ref", docIn.getDocumentElement(),
+								+ "']//element[@name='"
+                                + stDocumentIdentification
+                                + "']/ref", docIn.getDocumentElement(),
 								XPathConstants.NODESET); // En référence à la
 															// troisième étape.
 				if (thirdNodeList.getLength() > 0) {
