@@ -1,3 +1,9 @@
-Changements du 2016-05-24
-- Correction erreur en version 1.0 du SEDA sur gestion de l'identification des documents
+v1.0.1 :
+	- Deconnexion possible de la base de données.
+v1.0.2 : 
+	- Contains.Name > ContainsName
+v1.0.3 : 
+	- Ajout de la possibilité d'exécuter une tâche du fichier job.config
+	- Correctif : sur Windows, suppression du bordereau s'il existe.
+	- Correction erreur en version 1.0 du SEDA sur gestion de l'identification des documents
 
