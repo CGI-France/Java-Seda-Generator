@@ -10,4 +10,4 @@ v1.0.3 :
 v1.0.4 :
 	- SimpleConfig : suppression des messages d'erreur des sections manquantes
 	- SimpleConfig: ordre de chargement des sections : la section demandée ou default ou la première si default n'existe pas
-	- ConfigFileDao: correction message incomplet sur erreur de chargement de l'accord de versemnt  
+	- ConfigFileDao: correction message incomplet sur erreur de chargement de l'accord de versement  
