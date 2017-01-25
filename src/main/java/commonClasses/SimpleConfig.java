@@ -96,12 +96,19 @@ public class SimpleConfig {
 	 * @return
 	 */
 	public GeneratorConfig getGeneratorConfig(String configName) {
-		GeneratorConfig config = null;
-		for (GeneratorConfig c : generatorList) {
-			if (StringUtils.isEmpty(configName) || c.getNomJob().equals(configName)) {
-				config = c;
-				break;
-			}
+		// On recherche la section default si aucune section n'est précisée 
+		if (StringUtils.isEmpty(configName))
+			configName = "default";
+	 		GeneratorConfig config = null;
+	 		for (GeneratorConfig c : generatorList) {
+			if (c.getNomJob().equals(configName)) {
+ 				config = c;
+ 				break;
+ 			}
+ 		}
+		// Si la section default n'a pas été trouvée, on retourne la première section
+		if (config == null && configName.equals("default") && generatorList.size() >= 1) {
+				config = generatorList.get(0);
 		}
 		return config;
 	}
