@@ -117,19 +117,18 @@ public class SimpleConfig {
 		if (inSection) {
 			switch (section) {
 			case SECTION_ACCORD_VERSEMENT:
-				AccordVersementConfig paccord = new AccordVersementConfig();
-				paccord.setAccordVersement(sectionName);
-				paccord.setSaeServeur(saeServeur);
-				;
-				paccord.setTransferIdPrefix(transferIdPrefix);
-				paccord.setSaeProfilArchivage(saeProfilArchivage);
-				paccord.setTransferringAgencyId(transferringAgencyId);
-				paccord.setTransferringAgencyName(transferringAgencyName);
-				paccord.setTransferringAgencyDesc(transferringAgencyDesc);
-				paccord.setArchivalAgencyId(archivalAgencyId);
-				paccord.setArchivalAgencyName(archivalAgencyName);
-				paccord.setArchivalAgencyDesc(archivalAgencyDesc);
-				accordVersementConfigList.add(paccord);
+				AccordVersementConfig accord = new AccordVersementConfig();
+				accord.setAccordVersement(sectionName);
+				accord.setSaeServeur(saeServeur);
+				accord.setTransferIdPrefix(transferIdPrefix);
+				accord.setSaeProfilArchivage(saeProfilArchivage);
+				accord.setTransferringAgencyId(transferringAgencyId);
+				accord.setTransferringAgencyName(transferringAgencyName);
+				accord.setTransferringAgencyDesc(transferringAgencyDesc);
+				accord.setArchivalAgencyId(archivalAgencyId);
+				accord.setArchivalAgencyName(archivalAgencyName);
+				accord.setArchivalAgencyDesc(archivalAgencyDesc);
+				accordVersementConfigList.add(accord);
 				break;
 			case SECTION_GENERATOR:
 				GeneratorConfig generator = new GeneratorConfig();
