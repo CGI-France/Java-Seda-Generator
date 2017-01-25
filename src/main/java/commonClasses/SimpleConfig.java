@@ -24,6 +24,8 @@ public class SimpleConfig {
 	private static final String SECTION_GENERATOR_AUTHORIZED_FILES = "trace|accord|data|rep_documents|baseURI|bordereau";
 	private static final String SECTION_ACCORD_VERSEMENT = "accord-versement";
 	private static final String SECTION_ACCORD_VERSEMENT_AUTHORIZED_FILES = "SAE_Serveur|TransferIdPrefix|SAE_ProfilArchivage|TransferringAgencyId|TransferringAgencyName|TransferringAgencyDesc|ArchivalAgencyId|ArchivalAgencyName|ArchivalAgencyDesc";
+	private static final String SECTION_PROFILE = "profile-control";
+	private static final String SECTION_DATA = "data-control";
 	private static final String AUTHORIZED_FILES_REGEX_BEGIN = "^\\s*(";
 	// private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(([a-zA-Z0-9]|_|-|:|\\.|/)+)\\s*$";
 	private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(.*)\\s*$";
@@ -180,10 +182,13 @@ public class SimpleConfig {
 							} else if (SECTION_ACCORD_VERSEMENT.equals(section)) {
 								authorizedKeys = SECTION_ACCORD_VERSEMENT_AUTHORIZED_FILES;
 							} else {
-								errMsg = new StringBuilder().append(ERROR_CONFIG_SECTION_1).append(section)
-										.append(ERROR_CONFIG_SECTION_2).toString();
-								TRACESWRITER.error(errMsg);
-								errorsList.add(errMsg);
+								// TODO: sections ├á traiter lorsque le code C# sera port├® en Java 
+								if (! SECTION_PROFILE.equals(section) && ! SECTION_DATA.equals(section)) {
+									errMsg = new StringBuilder().append(ERROR_CONFIG_SECTION_1).append(section)
+											.append(ERROR_CONFIG_SECTION_2).toString();
+									TRACESWRITER.error(errMsg);
+									errorsList.add(errMsg);
+								}
 								inSection = false;
 							}
 							if (inSection) {

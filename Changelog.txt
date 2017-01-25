@@ -7,3 +7,6 @@ v1.0.3 :
 	- Correctif : sur Windows, suppression du bordereau s'il existe.
 	- Correction erreur en version 1.0 du SEDA sur gestion de l'identification des documents
 
+v1.0.4 :
+	- SimpleConfig : suppression des messages d'erreur des sections manquantes
+	  
