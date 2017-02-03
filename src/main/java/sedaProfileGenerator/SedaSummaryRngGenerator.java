@@ -1391,7 +1391,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		}
 
-		return getDocumentTypeId(result, context);
+		if (result != null) 
+			return getDocumentTypeId(result, context);
+		else {
+			// On ne produit pas d'erreur ici, car on aura un message indiquant qu'un 
+			// #KeywordContent est absent des données métier 
+			return null;
+		}
 	}
 
 	/**
@@ -1812,13 +1818,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		// on considère le document "doc" comme étant la source d'une
 		// transformation XML
 		Source source = new DOMSource(doc);
-
+		System.out.println("1");;
 		// le résultat de cette transformation sera un flux d'écriture dans
 		// un fichier
 
 		Result resultat = new StreamResult(tempFile);
 		try {
 			resultat.setSystemId(java.net.URLDecoder.decode(resultat.getSystemId(), WRITING_ENCODING));
+			System.out.println("2");;
 		} catch (UnsupportedEncodingException e) {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		}
@@ -1827,8 +1834,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		TransformerFactory transfoFactory = null;
 		try {
 			transfoFactory = new org.apache.xalan.xsltc.trax.TransformerFactoryImpl();
+			System.out.println("3");;
 			transfoFactory.setAttribute(TRANSFO_INDENT_NUMBER_ATTR, TRANSFO_INDENT_NUMBER_VALUE);
+			System.out.println("4");;
 			transfo = transfoFactory.newTransformer();
+			System.out.println("5");;
 		} catch (TransformerConfigurationException e) {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		} catch (TransformerFactoryConfigurationError e) {
@@ -1850,11 +1860,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		transfo.setOutputProperty(OutputKeys.INDENT, TRANSFO_INDENT);
 		try {
 			transfo.transform(source, resultat);
+			System.out.println("6");;
 		} catch (TransformerException e) {
 			throw new TechnicalException(ERROR_TRANSFORMATION_FAILED + e.getLocalizedMessage(), e);
 		}
 
 		// renomme le fichier avec son nom final
+		System.out.println("test exists " + tempFile.getAbsolutePath() + " ? = " + tempFile.exists());;
 		if (tempFile.exists()) {
 			File newFileExpected = new File(nomFichier);
 			if (newFileExpected.exists()) {
@@ -1868,6 +1880,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				throw new TechnicalException(ERROR_RENAME_1 + tempFile.getAbsolutePath() + ERROR_RENAME_2 + nomFichier);
 			}
 		} else {
+			System.out.println("Summary file to create: " + tempFilename);
+			try {
+				System.out.println("Summary file to create: " + tempFile.getCanonicalPath());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			System.out.println("Summary file to create: " + tempFile.getAbsolutePath());
 			throw new TechnicalException(ERROR_TEMP_DOESNT_EXIST_1 + tempFile.getAbsolutePath()
 					+ ERROR_TEMP_DOESNT_EXIST_2);
 		}

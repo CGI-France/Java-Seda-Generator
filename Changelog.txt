@@ -14,4 +14,4 @@ v1.0.4 :
 	
 v1.0.5 :
 	- Retour des erreurs sur stderr pour tests automatisés
-	
+	- Correction NullPointerException quand Keyword n'a pas de ArchivalAgencyObjectIdentifer/schemeID
