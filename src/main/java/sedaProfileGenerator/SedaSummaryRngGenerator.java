@@ -4,6 +4,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.FileSystemException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -275,6 +281,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		DocumentBuilderFactory factory = null;
 		try {
 			factory = DocumentBuilderFactory.newInstance();
+			factory.setNamespaceAware(false);
+			factory.setValidating(false);
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			docIn = builder.parse(new File(profileFile)); // Chargement du
 															// profil en objet
@@ -398,10 +406,10 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		}
 		if (currentPass == 2) {
 			int nbErrorsLocal = getNbErrors();
-			if (nbErrorsLocal == 0) {
+			//if (nbErrorsLocal == 0) {
 				ecrireDocument(docOut, summaryFile);
 				TRACESWRITER.debug(ERRORS_NUMBER_1 + nbErrorsLocal + ERRORS_NUMBER_2 + summaryFile);
-			} // Sinon le bordereau n'est pas généré.
+			//} // Sinon le bordereau n'est pas généré.
 		}
 
 		if (currentPass == 1) {
@@ -1442,7 +1450,9 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * fonction utilitaire utilisée par genElement
 	 */
 	private String getTag(String tag, String context) throws TechnicalException {
-
+		if (currentPass == 1)
+			return "";
+		
 		String dateString = null;
 		String dateStringIn;
 		SimpleDateFormat sdfBordereauZ = new SimpleDateFormat(FORMAT_DATE_BORDEREAU);
@@ -1463,18 +1473,31 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 		case TAG_CREATION:
 			dateStringIn = archiveDocuments.getDocumentDate();
-			try {
-				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
-			} catch (TechnicalException e) {
-				dateString = new StringBuilder().append("#DATAERR: date ").append(dateStringIn).toString();
-				errorMessage = new StringBuilder()
-						.append("#DATAERR: La date '")
-						.append(dateStringIn)
-						.append("' du document '")
-						.append(archiveDocuments.getFileName())
-						.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
-				throw new TechnicalException(errorMessage.toString(), e);
-			}
+			if ( ! "".equals(dateStringIn)) {
+				try {
+					dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
+				} catch (TechnicalException e) {
+					dateString = new StringBuilder().append("#DATAERR: date ").append(dateStringIn).toString();
+					errorMessage = new StringBuilder()
+							.append("#DATAERR: La date '")
+							.append(dateStringIn)
+							.append("' du document '")
+							.append(archiveDocuments.getFileName())
+							.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
+					logAndAddErrorsList(errorMessage.toString());
+					// throw new TechnicalException(errorMessage.toString(), e);
+				}				
+			} else { // Date non fournie
+                try {
+                    Path file = Paths.get(SAE_FilePath + "/" + archiveDocuments.getFileName());
+                    BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+
+                    FileTime date = attr.lastModifiedTime();
+                    dateString = tryParseDateDifferentFormat(date.toString(), tag, context);
+                } catch (IOException e) { // on se contente de ne pas calculer
+                    
+                }
+            }
 			break;
 
 		case TAG_OLDESTDATE:
@@ -1487,10 +1510,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				errorMessage = new StringBuilder()
 						.append("#DATAERR: La date '")
 						.append(dateStringIn)
-						.append("' du document '")
-						.append(archiveDocuments.getFileName())
+						.append("' '")
+						.append(tag)
 						.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
-				throw new TechnicalException(errorMessage.toString(), e);
+				logAndAddErrorsList(errorMessage.toString());
+				// throw new TechnicalException(errorMessage.toString(), e);
 			}
 
 			break;
@@ -1507,10 +1531,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				errorMessage = new StringBuilder()
 						.append("#DATAERR: La date '")
 						.append(dateStringIn)
-						.append("' du document '")
-						.append(archiveDocuments.getFileName())
+						.append("' '")
+						.append(tag)
 						.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
-				throw new TechnicalException(errorMessage.toString(), e);
+				logAndAddErrorsList(errorMessage.toString());
+				// throw new TechnicalException(errorMessage.toString(), e);
 			}
 
 			break;
@@ -1818,14 +1843,12 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		// on considère le document "doc" comme étant la source d'une
 		// transformation XML
 		Source source = new DOMSource(doc);
-		System.out.println("1");;
 		// le résultat de cette transformation sera un flux d'écriture dans
 		// un fichier
 
 		Result resultat = new StreamResult(tempFile);
 		try {
 			resultat.setSystemId(java.net.URLDecoder.decode(resultat.getSystemId(), WRITING_ENCODING));
-			System.out.println("2");;
 		} catch (UnsupportedEncodingException e) {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		}
@@ -1834,11 +1857,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		TransformerFactory transfoFactory = null;
 		try {
 			transfoFactory = new org.apache.xalan.xsltc.trax.TransformerFactoryImpl();
-			System.out.println("3");;
 			transfoFactory.setAttribute(TRANSFO_INDENT_NUMBER_ATTR, TRANSFO_INDENT_NUMBER_VALUE);
-			System.out.println("4");;
 			transfo = transfoFactory.newTransformer();
-			System.out.println("5");;
 		} catch (TransformerConfigurationException e) {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		} catch (TransformerFactoryConfigurationError e) {
@@ -1860,13 +1880,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		transfo.setOutputProperty(OutputKeys.INDENT, TRANSFO_INDENT);
 		try {
 			transfo.transform(source, resultat);
-			System.out.println("6");;
 		} catch (TransformerException e) {
 			throw new TechnicalException(ERROR_TRANSFORMATION_FAILED + e.getLocalizedMessage(), e);
 		}
 
 		// renomme le fichier avec son nom final
-		System.out.println("test exists " + tempFile.getAbsolutePath() + " ? = " + tempFile.exists());;
 		if (tempFile.exists()) {
 			File newFileExpected = new File(nomFichier);
 			if (newFileExpected.exists()) {
@@ -1880,14 +1898,6 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				throw new TechnicalException(ERROR_RENAME_1 + tempFile.getAbsolutePath() + ERROR_RENAME_2 + nomFichier);
 			}
 		} else {
-			System.out.println("Summary file to create: " + tempFilename);
-			try {
-				System.out.println("Summary file to create: " + tempFile.getCanonicalPath());
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			System.out.println("Summary file to create: " + tempFile.getAbsolutePath());
 			throw new TechnicalException(ERROR_TEMP_DOESNT_EXIST_1 + tempFile.getAbsolutePath()
 					+ ERROR_TEMP_DOESNT_EXIST_2);
 		}
@@ -1945,24 +1955,24 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * @param filenameOutput
 	 */
 	public boolean writeErrorsIfExist(String filenameOutput) throws TechnicalException {
-		ArrayList<String> errorsListLocal = getErrorsList();
 		boolean existErrors = false;
-		if (errorsListLocal.size() > 0) {
-			existErrors = true;
-			try {
-				FileWriter writer = new FileWriter(filenameOutput);
+		try {
+			FileWriter writer = new FileWriter(filenameOutput);
+			ArrayList<String> errorsListLocal = getErrorsList();
+			if (errorsListLocal.size() > 0) {
+				existErrors = true;
 				for (String str : errorsListLocal) {
 					writer.write(str + "\n");
 				}
-				writer.close();
-				TRACESWRITER.trace(ERRORS_IN_FILE + filenameOutput);
-			} catch (IOException e) {
-				throw new TechnicalException(ERRORS_UNABLE_TO_WRITE_IN_FILE + filenameOutput + " : "
-						+ e.getLocalizedMessage(), e);
+			} else {
+				existErrors = false;
+				TRACESWRITER.trace(TRACE_NO_ERROR_TO_WRITE + filenameOutput);
 			}
-		} else {
-			existErrors = false;
-			TRACESWRITER.trace(TRACE_NO_ERROR_TO_WRITE + filenameOutput);
+			writer.close();
+			TRACESWRITER.trace(ERRORS_IN_FILE + filenameOutput);
+		} catch (IOException e) {
+			throw new TechnicalException(ERRORS_UNABLE_TO_WRITE_IN_FILE + filenameOutput + " : "
+					+ e.getLocalizedMessage(), e);
 		}
 		return existErrors;
 	}

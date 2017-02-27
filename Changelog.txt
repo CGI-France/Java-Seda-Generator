@@ -15,3 +15,10 @@ v1.0.4 :
 v1.0.5 :
 	- Retour des erreurs sur stderr pour tests automatisés
 	- Correction NullPointerException quand Keyword n'a pas de ArchivalAgencyObjectIdentifer/schemeID
+	- Génération systématique du bordereau même en cas d'erreur
+	- Correction NullPointerException si la date d'un document est vide  
+	- Calcul de la date du document si elle n'est pas fournie par les données métier
+	- Suppression des TechnicalException en cas de format de date incorrect
+	- Modification libellé d'erreur sur les dates extrêmes
+	- Pas d'exécution de getTag en passe 1 (retour chaîne vide)
+	- Vidage du fichier de traces dans le cas où il n'y a pas d'erreurs

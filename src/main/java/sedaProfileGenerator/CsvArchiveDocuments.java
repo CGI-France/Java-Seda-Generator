@@ -411,7 +411,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 				addActionError(errorMessage.toString());
 				dateLocal = ERROR_NOT_FOUND;
 			} else {
-				dateLocal = tabCurrent[4];
+				dateLocal = tabCurrent.length > 4 ? tabCurrent[4] : "";
 			}
 		}
 		if (dateLocal == null) {
