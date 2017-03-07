@@ -118,6 +118,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 	// Contextes SEDA
 	private static final String CONTEXT_END_DOCATT = "Document/Attachment";
+	private static final String CONTEXT_DOCUNIT_SIZE = "Contains/ContentDescription/Size";
 	private static final String CONTEXT_END_DOCSIZE = "Document/Size";
 	private static final String CONTEXT_END_INTEGRITY = "Integrity";
 
@@ -937,7 +938,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 										}
 										if (context.endsWith(CONTEXT_END_INTEGRITY)
 												&& ATTR_NAME_ALGORITHME.equals(attrName)) {
-											value = getHashAlgorithm(archiveDocuments.getFileName());
+											value = getCurrentDocumentHashAlgorithm();
 										}
 									}
 									try {
@@ -1152,8 +1153,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				double sizeOfDocuments = 0;
 				archiveDocuments.prepareCompleteList();
 				while (archiveDocuments.nextDocument()) {
-					File f = new File(SAE_FilePath + "/" + archiveDocuments.getFileName());
-					long taille = f.length();
+					long taille = getCurrentDocumentSize();
 					sizeOfDocuments += taille;
 				}
 				TRACESWRITER.trace("Size computed = '" + sizeOfDocuments + "'");
@@ -1236,11 +1236,19 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				break;
 			default:
 				if (context.endsWith(CONTEXT_END_INTEGRITY)) {
-					dataString = getHash(archiveDocuments.getFileName());
+					dataString = getCurrentDocumentHash();
+				} else if (context.endsWith(CONTEXT_DOCUNIT_SIZE)) { // SEDA 0.2
+					double sizeOfDocuments = 0;
+					archiveDocuments.prepareListForType(currentContainsNode.getRelativeContext(), false);
+					while (archiveDocuments.nextDocument()) {
+						long taille = getCurrentDocumentSize();
+						sizeOfDocuments += taille;
+					}
+					TRACESWRITER.trace("Size computed = '" + sizeOfDocuments + "'");
+					dataString = convertUnit(sizeOfDocuments, node);
 				} else if (context.endsWith(CONTEXT_END_DOCSIZE)) {
 					double sizeOfDocuments = 0;
-					File f = new File(SAE_FilePath + "/" + archiveDocuments.getFileName());
-					long taille = f.length();
+					long taille = getCurrentDocumentSize();
 					sizeOfDocuments += taille;
 					TRACESWRITER.trace("Size computed = '" + sizeOfDocuments + "'");
 					dataString = convertUnit(sizeOfDocuments, node);
@@ -1576,8 +1584,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 						elementCourantW = createChildElement(NOEUD_CONTAINS, elementCourantW, docOut);
 						elementCourantW.setAttribute(ATTR_NAME_ALGORITHME,
-								getHashAlgorithm(archiveDocuments.getFileName()));
-						elementCourantW.setTextContent(getHash(archiveDocuments.getFileName()));
+								getCurrentDocumentHashAlgorithm());
+						elementCourantW.setTextContent(getCurrentDocumentHash());
 						currentNodeW = getParentElementFromNode(elementCourantW);
 
 						elementCourantW = (Element) currentNodeW;
@@ -1717,34 +1725,35 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	}
 
 	/**
-	 * getHash récupère l'empreinte dans le fichier des données métiers ou la calcule.
+	 * getHash récupère l'empreinte dans le fichier des données métier ou la calcule.
 	 *
 	 * @param documentFileName permet de calculer l'empreinte si nécessaire
 	 * @return
 	 */
-	private String getHash(String documentFileName) {
+	private String getCurrentDocumentHash() {
 		String hash = null;
 
-		hash = archiveDocuments.getHash();
+		hash = archiveDocuments.getDocumentHash();
 
 		if (hash == null) {
-			hash = computeHash(documentFileName);
+			hash = computeHash(archiveDocuments.getFileName());
 		}
 
 		return hash;
 	}
+	
 
 	/**
-	 * getHashAlgorithm récupère l'algorithme de l'empreinte dans le fichier des données métiers renvoie la valeur par
+	 * getHashAlgorithm récupère l'algorithme de l'empreinte dans le fichier des données métier renvoie la valeur par
 	 * défaut
 	 *
 	 * @param documentFileName permet de calculer l'empreinte si nécessaire
 	 * @return
 	 */
-	private String getHashAlgorithm(String documentFileName) {
+	private String getCurrentDocumentHashAlgorithm() {
 		String hashAlgorithm = null;
 
-		hashAlgorithm = archiveDocuments.getHashAlgorithm();
+		hashAlgorithm = archiveDocuments.getDocumentHashAlgorithm();
 
 		if (hashAlgorithm == null) {
 			hashAlgorithm = DEFAULT_ALGORITHM;
@@ -1752,6 +1761,35 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 		return hashAlgorithm;
 	}
+
+	/**
+	 * getSize récupère la taille dans le fichier des données métier ou la calcule.
+	 *
+	 * @param documentFileName permet de calculer la taille si nécessaire
+	 * @return
+	 */
+	private long getCurrentDocumentSize() {
+		String stTaille = null;
+		long taille = 0L;
+
+		stTaille = archiveDocuments.getDocumentSize();
+
+		if (stTaille != null) {
+			try {
+				taille = Long.parseLong(stTaille);
+			}
+			catch (NumberFormatException e) {
+				stTaille = null;
+			}
+		}
+		if (stTaille == null) {
+			File f = new File(SAE_FilePath + "/" + archiveDocuments.getFileName());
+			taille = f.length();
+		}
+
+		return taille;
+	}
+	
 
 	private String formatContainsIdentifier(String containsIdentifier, int numeroTag) {
 		// TODO?: containsIdentifier - '+' + '[' + numéro d'ordre + ']'

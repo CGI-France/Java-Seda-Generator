@@ -22,3 +22,5 @@ v1.0.5 :
 	- Modification libellé d'erreur sur les dates extrêmes
 	- Pas d'exécution de getTag en passe 1 (retour chaîne vide)
 	- Vidage du fichier de traces dans le cas où il n'y a pas d'erreurs
+	- Récupèration de la taille des documents dans les données métier si elle est fournie
+	- Calcul de la taille des documents des unités documentaires en SEDA 0.2

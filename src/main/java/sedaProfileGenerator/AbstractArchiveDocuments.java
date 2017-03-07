@@ -66,13 +66,19 @@ public abstract class AbstractArchiveDocuments {
 	 * Donne l'algorithme de l'empreinte pour l'élément courant (positionné par nextDocument ou prepareCompleteList ou
 	 * prepareListForType)
 	 */
-	abstract public String getHashAlgorithm();
+	abstract public String getDocumentHashAlgorithm();
 
 	/**
 	 * Donne l'empreinte pour l'élément courant (positionné par nextDocument ou prepareCompleteList ou
 	 * prepareListForType)
 	 */
-	abstract public String getHash();
+	abstract public String getDocumentHash();
+
+	/**
+	 * Donne la taille pour l'élément courant (positionné par nextDocument ou prepareCompleteList ou
+	 * prepareListForType)
+	 */
+	abstract public String getDocumentSize();
 
 	/**
 	 * Donne la date la plus récente de la liste préparée par prepareCompleteList ou prepareListForType

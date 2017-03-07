@@ -109,14 +109,15 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 
 	private static final int NB_TAG_LINE_VALUE_FIELDS = 2;
 	private static final int NB_MIN_DOCUMENT_LINE_FIELDS = 2;
-	private static final int NB_MAX_DOCUMENT_LINE_FIELDS = 6; // Il y a deux champs en plus lorsque l'empreinte est
-																// renseignée.
+	private static final int NB_MAX_DOCUMENT_LINE_FIELDS = 7;	// Il y a deux champs en plus lorsque l'empreinte est renseignée
+																// Il y a trois champs en plus lorsque la taille est renseignée
 	private static final int FILENAME_LOCATION = 1;
 	private static final int TYPE_LOCATION = 2;
 	private static final int NAME_LOCATION = 3;
 	private static final int DATE_LOCATION = 4;
 	private static final int ALGO_LOCATION = 5;
 	private static final int HASH_LOCATION = 6;
+	private static final int SIZE_LOCATION = 7;
 
 	public CsvArchiveDocuments() {
 
@@ -422,26 +423,21 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	}
 
 	/**
-	 * Permet de récupérer l'algorithme utilisé pour l'empreinte des données métiers ou de recevoir la valeur par défaut
+	 * Permet de récupérer l'algorithme utilisé pour l'empreinte des données métier
 	 *
-	 * @return l'algorithme de calcul d'empreinte si il est présent dans les données métier (avec une valeur
-	 *         d'empreinte), null sinon
+	 * @return l'algorithme de calcul d'empreinte si il est présent dans les données métier, null sinon
 	 */
 	@Override
-	public String getHashAlgorithm() {
+	public String getDocumentHashAlgorithm() {
 
 		String returnHashAlgorithm;
-		String hashAlgorithmFromDataFile;
-		String hashFromDataFile;
 
 		String[] tabCurrent = currentPartialDocument;
 		returnHashAlgorithm = null;
 
-		if (!(tabCurrent == null) && tabCurrent.length >= 7) {
-			hashAlgorithmFromDataFile = tabCurrent[ALGO_LOCATION];
-			hashFromDataFile = tabCurrent[HASH_LOCATION];
-			if (StringUtils.isNotEmpty(hashAlgorithmFromDataFile) && StringUtils.isNotEmpty(hashFromDataFile)) {
-				returnHashAlgorithm = hashAlgorithmFromDataFile;
+		if (tabCurrent != null && tabCurrent.length >= (HASH_LOCATION + 1)) {
+			if (StringUtils.isNotEmpty(tabCurrent[ALGO_LOCATION]) && StringUtils.isNotEmpty(tabCurrent[HASH_LOCATION])) {
+				returnHashAlgorithm = tabCurrent[ALGO_LOCATION];
 			}
 		}
 
@@ -450,29 +446,43 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	}
 
 	/**
-	 * Permet de récupérer l'empreinte des données métiers ou de la calculer
+	 * Permet de récupérer l'empreinte des données métier
 	 *
-	 * @return l'empreinte si elle est présente dans les données métier (avec un algorithme), null sinon
+	 * @return l'empreinte si elle est présente dans les données métier, null sinon
 	 */
 	@Override
-	public String getHash() {
+	public String getDocumentHash() {
 
 		String returnHash;
-		String hashAlgorithmFromDataFile;
-		String hashFromDataFile;
 
 		String[] tabCurrent = currentPartialDocument;
 		returnHash = null;
 
-		if (!(tabCurrent == null) && tabCurrent.length >= 7) {
-			hashAlgorithmFromDataFile = tabCurrent[ALGO_LOCATION];
-			hashFromDataFile = tabCurrent[HASH_LOCATION];
-			if (StringUtils.isNotEmpty(hashAlgorithmFromDataFile) && StringUtils.isNotEmpty(hashFromDataFile)) {
-				returnHash = hashFromDataFile;
+		if (tabCurrent != null && tabCurrent.length >= (HASH_LOCATION + 1)) {
+			if (StringUtils.isNotEmpty(tabCurrent[ALGO_LOCATION]) && StringUtils.isNotEmpty(tabCurrent[HASH_LOCATION])) {
+				returnHash = tabCurrent[HASH_LOCATION];
 			}
 		}
 
 		return returnHash;
+
+	}
+
+	/**
+	 * Permet de récupérer la taille du document fournie par les données métier
+	 *
+	 * @return la taille si elle est présente dans les données métier, null sinon
+	 */
+	@Override
+	public String getDocumentSize() {
+
+		String returnSize = null;
+
+		if (currentPartialDocument != null && currentPartialDocument.length >= (SIZE_LOCATION + 1)) {
+			returnSize = currentPartialDocument[SIZE_LOCATION];
+		}
+
+		return returnSize;
 
 	}
 
