@@ -866,6 +866,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 													if (refFPPNode != null) {
 														tagFilePlanPosition = lookupForAttribute(ATTR_NAME_SCHEME_ID,
 																refFPPNode);
+														if (tagFilePlanPosition != null)
+															tagFilePlanPosition = getDocumentTypeId(tagFilePlanPosition, context);
 													}
 													// int nbFilePlanPosition = archiveDocuments.getNbkeys(
 													// NOEUD_FILEPLANPOSITION, tagFilePlanPosition, null);
@@ -1309,6 +1311,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 					defineFilePlanPosition = node.getParentNode();
 					filePlanPositionSchemeId = lookupForAttribute(ATTR_NAME_SCHEME_ID, defineFilePlanPosition);
+					if (filePlanPositionSchemeId != null)
+						filePlanPositionSchemeId = getDocumentTypeId(filePlanPositionSchemeId, context);
 
 					if (!currentDocumentTypeId.equals(ROOT)) {
 						tag.append(currentContainsNode.getRelativeContext());
