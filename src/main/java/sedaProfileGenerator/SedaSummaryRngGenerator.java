@@ -1472,16 +1472,16 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 		switch (tag) {
 		case TAG_RECEIPT:
-			throw new RuntimeException("TODO: Receipt");
+			return "TODO: Receipt";
 
 		case TAG_TYPE:
-			throw new RuntimeException("TODO: Type");
+			return "TODO: Type";
 
 		case TAG_ISSUE:
-			throw new RuntimeException("TODO: Issue");
+			return "TODO: Issue";
 
 		case TAG_DURATION:
-			throw new RuntimeException("TODO: Duration");
+			return "TODO: Duration";
 
 		case TAG_CREATION:
 			dateStringIn = archiveDocuments.getDocumentDate();
