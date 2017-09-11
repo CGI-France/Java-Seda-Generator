@@ -28,3 +28,7 @@ v1.0.5 :
 	
 v1.0.7 :
 	- Suppression du déclenchement de RuntimException pour les balises Duration, Receipt, ...
+
+v1.1.0 :
+	- Calcul des dates extrêmes dans les unités documentaires (l'ancien calcul concernait l'archive)
+

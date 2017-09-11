@@ -46,6 +46,8 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	private ArrayList<String[]> partialDocumentsList = new ArrayList<String[]>();
 	private Enumeration<String[]> partialDocumentsListEnumerator;
 	private String[] currentPartialDocument = null;
+	private String partialDocumentsListCurrentDocType = null;
+	private String currentArchiveObjectIdentifier = null;
 	private String lastError;
 
 	private String oldestDate = null;
@@ -266,9 +268,14 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	@Override
 	public int prepareListForType(String docListType, boolean withDocumentIdentification) {
 
+		// Si la liste a déjà été préparée pour ce type de document, on ne fait rien
+		if (partialDocumentsListCurrentDocType != null && docListType.equals(partialDocumentsListCurrentDocType))
+			return partialDocumentsList.size();
+		
 		TRACESWRITER.trace(TRACE_BEGIN_PREPARE_LIST_FOR_TYPE_1 + docListType + TRACE_BEGIN_PREPARE_LIST_FOR_TYPE_2);
 		int counter = 0;
 		partialDocumentsList.clear();
+		partialDocumentsListCurrentDocType = docListType;
 		for (int i = 0; i < documentsList.size(); i++) {
 			String[] elements = documentsList.get(i);
 			if ((withDocumentIdentification == true && elements[TYPE_LOCATION].equals(docListType))
@@ -485,34 +492,113 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 		return returnSize;
 
 	}
+	
+	private boolean elementMatchesDocumentIdentifier(String elementType, String archiveObjectIdentifier) {
+		// On enlève progressivement de elementType les parties d'identifiant jusqu'à trouver une correspondance
+		// On ne traite pas les documents (par ex :  NODE1//NODE2[#3]//NODE4{DOC}
+		// Ex : NODE1//NODE2[#3]//NODE4
+		// se décompose en :
+		// NODE1//NODE2[#3]//NODE4
+		// NODE1//NODE2[#3]
+		// NODE1
+		// "root" correspond à tous les documents
+		if (archiveObjectIdentifier.equals("root"))
+			return true;
+		int indexSeparator = 0;
+		while (indexSeparator != -1) {
+			if (elementType.equals(archiveObjectIdentifier))
+				return true;
+			indexSeparator = elementType.lastIndexOf("//");
+			if (indexSeparator != -1)
+				elementType = elementType.substring(0, indexSeparator);
+		}
+
+		return false;
+	}
 
 	/**
-	 * Donne la date la plus récente de la liste préparée par prepareCompleteList ou prepareListForType (methode de
+	 * Calcule les dates extrêmes pour une unité documentaire
+	 *
+	 */
+	@Override
+	public void computeDates(String archiveObjectIdentifier) throws TechnicalException {
+
+		TRACESWRITER.trace("computeDates (" + archiveObjectIdentifier + ") through " + documentsList.size() + " documents");
+
+		oldestDate = DEFAULT_OLDEST_DATE;
+		latestDate = DEFAULT_LATEST_DATE;
+		String[] elements;
+		String dateString = "";
+		SimpleDateFormat pattern;
+		SimpleDateFormat sdfDefault = new SimpleDateFormat(DATE_PATTERN_1);
+		Date date;
+
+		List<String> knownPatterns = new ArrayList<String>();
+		knownPatterns.add(DATE_PATTERN_2);
+		knownPatterns.add(DATE_PATTERN_3);
+		knownPatterns.add(DATE_PATTERN_1);
+		knownPatterns.add(DATE_PATTERN_4);
+		int nbMatchingDocs = 0;
+		for (int i = 0; i < documentsList.size(); i++) {
+			elements = documentsList.get(i);
+			if (elementMatchesDocumentIdentifier(elements[TYPE_LOCATION], archiveObjectIdentifier)) {
+				++nbMatchingDocs;
+				if (elements.length > DATE_LOCATION) {
+					dateString = elements[DATE_LOCATION];
+					for (String patternString : knownPatterns) {
+						try {
+							Date oldest = sdfDefault.parse(oldestDate);
+							Date latest = sdfDefault.parse(latestDate);
+							pattern = new SimpleDateFormat(patternString);
+							date = pattern.parse(dateString);
+							if (date.before(oldest))
+								oldestDate = sdfDefault.format(date);
+							if (date.after(latest))
+								latestDate = sdfDefault.format(date);
+							break;
+						} catch (ParseException pe) {
+						} // On essaie plusieurs patterns
+					}
+				} else {
+					if (elements.length > FILENAME_LOCATION && !StringUtils.isEmpty(elements[FILENAME_LOCATION])) {
+						throw new TechnicalException(ERROR_COMPUTE_DATES_DOC_IDENTIFIED + elements[FILENAME_LOCATION]);
+					} else {
+						throw new TechnicalException(ERROR_COMPUTE_DATES);
+					}
+				}
+			}
+		}
+		currentArchiveObjectIdentifier = archiveObjectIdentifier;
+		TRACESWRITER.trace("OldestDate = '" + oldestDate + "' latestDate = '" + latestDate + "' nbMatchingDocs '" + nbMatchingDocs + "'");
+
+	}
+
+	/**
+	 * Donne la date la plus récente calculée par computeDates (methode de
 	 * remplacement) {@inheritDoc}
 	 * 
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getLatestDate()
 	 */
 	@Override
-	public String getLatestDate() throws TechnicalException {
+	public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException {
 
-		if (latestDate == null)
-			computeDates();
+		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
+			computeDates(archiveObjectIdentifier);
 		return latestDate;
 
 	}
 
 	/**
-	 * Donne la date la plus ancienne de la liste préparée par prepareCompleteList ou prepareListForType (methode de
+	 * Donne la date la plus ancienne calculée par computeDates (methode de
 	 * remplacement) {@inheritDoc}
 	 * 
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getOldestDate()
 	 */
 	@Override
-	public String getOldestDate() throws TechnicalException {
+	public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException {
 
-		if (oldestDate == null) {
-			computeDates();
-		}
+		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
+			computeDates(archiveObjectIdentifier);
 		return oldestDate;
 
 	}
@@ -671,59 +757,6 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 			logAndAddErrorsList(value);// TODO Le non
 		// renseignement d'une valeur de clé devient bloquant
 		return value;
-	}
-
-	/**
-	 * Calcule les dates extrêmes pour le fichier de données métiers.
-	 *
-	 */
-	private void computeDates() throws TechnicalException {
-
-		oldestDate = DEFAULT_OLDEST_DATE;
-		latestDate = DEFAULT_LATEST_DATE;
-		String[] elements;
-		String dateString = "";
-		SimpleDateFormat pattern;
-		SimpleDateFormat sdfDefault = new SimpleDateFormat(DATE_PATTERN_1);
-		Date date;
-
-		List<String> knownPatterns = new ArrayList<String>();
-		knownPatterns.add(DATE_PATTERN_2);
-		knownPatterns.add(DATE_PATTERN_3);
-		knownPatterns.add(DATE_PATTERN_1);
-		knownPatterns.add(DATE_PATTERN_4);
-
-		for (int i = 0; i < documentsList.size(); i++) {
-			elements = documentsList.get(i);
-			if (elements.length > DATE_LOCATION) {
-				dateString = elements[DATE_LOCATION];
-				for (String patternString : knownPatterns) {
-					try {
-						Date oldest = sdfDefault.parse(oldestDate);
-						Date latest = sdfDefault.parse(latestDate);
-						pattern = new SimpleDateFormat(patternString);
-						date = pattern.parse(dateString);
-						if (date.before(oldest)) {
-							oldestDate = sdfDefault.format(date);
-
-						}
-						if (date.after(latest)) {
-							latestDate = sdfDefault.format(date);
-
-						}
-						break;
-					} catch (ParseException pe) {
-					} // On essaie plusieurs patterns
-				}
-			} else {
-				if (elements.length > FILENAME_LOCATION && !StringUtils.isEmpty(elements[FILENAME_LOCATION])) {
-					throw new TechnicalException(ERROR_COMPUTE_DATES_DOC_IDENTIFIED + elements[FILENAME_LOCATION]);
-				} else {
-					throw new TechnicalException(ERROR_COMPUTE_DATES);
-				}
-			}
-		}
-
 	}
 
 	public ArrayList<String[]> getDocumentsList() {

@@ -594,6 +594,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 					int nbDocs = currentContainsNode.getNbDocuments();
 					bGenererElement.setValue(nbDocs > 0 ? 1 : 0);
 					TRACESWRITER.trace("DOCLIST docs " + currentDocumentTypeId + " contains " + nbDocs + " documents");
+					archiveDocuments.prepareListForType(currentContainsNode.getRelativeContext(), false);
 				}
 			}
 		} else {
@@ -1513,7 +1514,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			break;
 
 		case TAG_OLDESTDATE:
-			dateStringIn = archiveDocuments.getOldestDate();
+			dateStringIn = archiveDocuments.getOldestDate(currentContainsNode.getRelativeContext());
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));
@@ -1534,7 +1535,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		case TAG_STARTDATE:
 
 		case TAG_LATESTDATE:
-			dateStringIn = archiveDocuments.getLatestDate();
+			dateStringIn = archiveDocuments.getLatestDate(currentContainsNode.getRelativeContext());
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));
