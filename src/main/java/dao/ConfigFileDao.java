@@ -25,6 +25,7 @@ public class ConfigFileDao implements SedaSummaryRngGeneratorDaoInterface {
 	private static final String ERROR_ACCORD_NOT_FOUND_3 = "' dans la configuration";
 
 	private static final String FORMAT_DATE_ID_TRANSFER = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'";
+	private static final String FORMAT_SHORT_DATE_ID_TRANSFER = "yyyy-MM-dd'T'HH:mm:ss";
 	private static final String SEPARATOR_TRANFER_ID = "@";
 
 	private SimpleConfig simpleConfig;
@@ -66,6 +67,14 @@ public class ConfigFileDao implements SedaSummaryRngGeneratorDaoInterface {
 			transferIdBuilder.append(accordVersementConfig.getTransferIdPrefix()).append(dataSha256)
 					.append(SEPARATOR_TRANFER_ID).append(dateString);
 			sae.setTransferId(transferIdBuilder.toString());
+
+			sdf = new SimpleDateFormat(FORMAT_SHORT_DATE_ID_TRANSFER);
+			dateString = sdf.format(new Date());
+			
+			transferIdBuilder.setLength(0);
+			transferIdBuilder.append(accordVersementConfig.getTransferIdPrefix()).append(dateString);
+			sae.setShortTransferId(transferIdBuilder.toString());
+			
 			sae.setProfileFile(accordVersementConfig.getSaeProfilArchivage());
 			sae.setTransferringAgencyId(accordVersementConfig.getTransferringAgencyId());
 			sae.setTransferringAgencyName(accordVersementConfig.getTransferringAgencyName());

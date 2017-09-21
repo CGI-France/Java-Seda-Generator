@@ -32,3 +32,6 @@ v1.0.7 :
 v1.1.0 :
 	- Calcul des dates extrêmes dans les unités documentaires (l'ancien calcul concernait l'archive)
 
+v1.1.1 :
+	- Génération de la balise TransferringAgencyObjectIdentifier et TransferringAgencyArchiveIdentifier
+

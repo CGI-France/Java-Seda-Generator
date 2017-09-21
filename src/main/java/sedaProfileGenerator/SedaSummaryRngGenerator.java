@@ -115,6 +115,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String TAG_LATESTDATE = "LatestDate";
 	private static final String TAG_DATE = "Date";
 	private static final String TAG_INTEGRITY = "Integrity";
+	private static final String TAG_TAAI = "TransferringAgencyArchiveIdentifier";
+	private static final String TAG_TAOI = "TransferringAgencyObjectIdentifier";
 
 	// Contextes SEDA
 	private static final String CONTEXT_END_DOCATT = "Document/Attachment";
@@ -1231,12 +1233,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 							+ CsvArchiveDocuments.END_TAG_CAR);
 				}
 				break;
+				/*
 			case "/ArchiveTransfer/Archive/ArchiveObject/TransferringAgencyObjectIdentifier": // SEDA
 																								// 1.0
 			case "/ArchiveTransfer/Contains/Contains/TransferringAgencyObjectIdentifier": // SEDA
 																							// 0.2
 				dataString = "TODO: '" + context + "'";
 				break;
+				*/
 			default:
 				if (context.endsWith(CONTEXT_END_INTEGRITY)) {
 					dataString = getCurrentDocumentHash();
@@ -1333,6 +1337,10 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 									+ CsvArchiveDocuments.END_TYPE_CAR + CsvArchiveDocuments.END_TAG_CAR);
 						}
 					}
+				} else if (context.endsWith(TAG_TAOI)) {
+					dataString = sae.getShortTransferId() + "_" + String.format("%05d", objectIdentifier);
+				} else if (context.endsWith(TAG_TAAI)) {
+					dataString = sae.getShortTransferId();
 				} else {
 					TRACESWRITER.trace("getData  ----  !!!! context '" + context + "' Unhandled in '"
 							+ node.getNodeName() + "'");
