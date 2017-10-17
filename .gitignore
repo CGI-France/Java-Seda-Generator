@@ -1,0 +1,15 @@
+/target/archive-tmp/
+/target/classes/
+/target/generated-sources/
+/target/lib/
+/target/maven-archiver/
+/target/maven-status/
+/target/surefire/
+/target/test-classes/
+/target/JavaSedaProfileGenerator-1.0-bin.zip
+/target/JavaSedaProfileGenerator-1.0.jar
+/target/JavaSedaProfileGenerator-1.0.1-bin.zip
+/target/JavaSedaProfileGenerator-1.0.1.jar
+/target/JavaSedaProfileGenerator-1.0.2.jar
+/bin
+/target/

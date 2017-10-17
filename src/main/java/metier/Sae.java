@@ -7,6 +7,7 @@ public class Sae {
 
 	private int id;
 	private String transferId;
+	private String shortTransferId;
 	private String profileFile;
 	private String TransferringAgencyId;
 	private String TransferringAgencyName;
@@ -85,6 +86,14 @@ public class Sae {
 
 	public void setArchivalAgencyDesc(String archivalAgencyDesc) {
 		ArchivalAgencyDesc = archivalAgencyDesc;
+	}
+
+	public String getShortTransferId() {
+		return shortTransferId;
+	}
+
+	public void setShortTransferId(String shorttransferId) {
+		this.shortTransferId = shorttransferId;
 	}
 
 }

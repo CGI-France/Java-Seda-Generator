@@ -1,6 +1,9 @@
 package unit;
 
 import commonClasses.GeneratorConfig;
+
+import java.util.ArrayList;
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,6 +199,7 @@ public class SedaGeneratorUnit {
                     args.length + ERROR_WAITING_ARGUMENTS_4);
 			System.exit(1);
 		}
+		System.exit(0);
 	}
 
 	/**
@@ -236,8 +240,15 @@ public class SedaGeneratorUnit {
 				ssg.addErrorsList(e.getLocalizedMessage());
 			}
 		}
+
+		// Affichage des erreurs dans la sortie d'erreur standard
+		ArrayList<String> errors = ssg.getErrorsList();	    
+		for (String str : errors) {
+	    	System.err.println(str);
+		}
 		try {
 			boolean existsErrors = ssg.writeErrorsIfExist(summaryPathError);
+
 			if (existsErrors) {
 				System.exit(2);
 			}

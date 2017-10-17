@@ -4,6 +4,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.FileSystemException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -76,8 +82,12 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String NOEUD_ARCHIVETRANSFER = "ArchiveTransfer";
 	private static final String NOEUD_UNITIDENTIFIER = "UnitIdentifier";
 	private static final String NOEUD_INTEGRITY = "Integrity";
+    private static final String NOEUD_ARCHIVALAGENCYDOCUMENTIDENTIFIER = "ArchivalAgencyDocumentIdentifier";
+    private static final String NOEUD_IDENTIFICATION = "Identification";
 
 	// Attributs SEDA
+    private static final String SEDA_VERSION_02 = "fr:gouv:ae:archive:draft:standard_echange_v0.2";
+    private static final String SEDA_VERSION_10 = "fr:gouv:culture:archivesdefrance:seda:v1.0";
 	private static final String ATTR_NAME_FILENAME = "filename";
 	private static final String ATTR_NAME_ALGORITHME = "algorithme";
 	private static final String ATTR_NAME_SCHEME_ID = "schemeID";
@@ -87,6 +97,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String NODE_VALUE_ANY_ELEMENT = "anyElement";
 	private static final String COMMENT = "#comment";
 	private static final String ITEM_NAME = "name";
+	private static final String ITEM_NS = "ns";
 	private static final String UNITCODE_NAME = "unitCode";
 	private static final String UNITCODE_E36 = "E36";
 	private static final String UNITCODE_E35 = "E35";
@@ -104,9 +115,12 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String TAG_LATESTDATE = "LatestDate";
 	private static final String TAG_DATE = "Date";
 	private static final String TAG_INTEGRITY = "Integrity";
+	private static final String TAG_TAAI = "TransferringAgencyArchiveIdentifier";
+	private static final String TAG_TAOI = "TransferringAgencyObjectIdentifier";
 
 	// Contextes SEDA
 	private static final String CONTEXT_END_DOCATT = "Document/Attachment";
+	private static final String CONTEXT_DOCUNIT_SIZE = "Contains/ContentDescription/Size";
 	private static final String CONTEXT_END_DOCSIZE = "Document/Size";
 	private static final String CONTEXT_END_INTEGRITY = "Integrity";
 
@@ -114,6 +128,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String KEY_TRANSFERNAME = "TransferName";
 	private static final String KEY_COMMENT = "Comment";
 	private static final String KEY_CUSTODIALHISTORY = "CustodialHistory";
+	private static final String KEY_CONTENTDESCRIPTION = "ContentDescription";
 	private static final String KEY_DESCRIPTION = "Description";
 	private static final String KEY_FILEPLANPOSITION = "FilePlanPosition";
 	private static final String KEY_ORIGINATINGAGENCY = "OriginatingAgency";
@@ -185,6 +200,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private Document docIn;
 	private Document docOut;
 	private Node grammarNode;
+    private String SEDA_version;
 
 	// La génération se fait en deux passes, durant la première on calcule le nombre de documents par unité documentaire
 	// les erreurs sont inhibées durant cette phase
@@ -268,6 +284,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		DocumentBuilderFactory factory = null;
 		try {
 			factory = DocumentBuilderFactory.newInstance();
+			factory.setNamespaceAware(false);
+			factory.setValidating(false);
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			docIn = builder.parse(new File(profileFile)); // Chargement du
 															// profil en objet
@@ -363,6 +381,18 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				startNode = nodes.item(0);
 			}
 			if (grammarNode != null && startNode != null) {
+                    // SEDA 1.0 "fr:gouv:culture:archivesdefrance:seda:v1.0"
+                    // SEDA 0.2 "fr:gouv:ae:archive:draft:standard_echange_v0.2"
+                    String sTestSeda = grammarNode.getAttributes().getNamedItem(ITEM_NS).getNodeValue();
+                    if (SEDA_VERSION_02.equals(sTestSeda)) {
+                        SEDA_version = "0.2";
+                    } else
+                        if (SEDA_VERSION_10.equals(sTestSeda)) {
+                            SEDA_version = "1.0";
+                        } else {
+                            SEDA_version = "Version du SEDA inconnue";
+                            logAndAddErrorsList("Version du SEDA inconnue : '" + sTestSeda + "'");
+                        }
 				recurseDefine(startNode.getAttributes().getNamedItem(ITEM_NAME).getNodeValue(), "");
 			} else {
 				// On pourrait tracer l'erreur seulement quand currentPass = 2
@@ -379,10 +409,10 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		}
 		if (currentPass == 2) {
 			int nbErrorsLocal = getNbErrors();
-			if (nbErrorsLocal == 0) {
+			//if (nbErrorsLocal == 0) {
 				ecrireDocument(docOut, summaryFile);
 				TRACESWRITER.debug(ERRORS_NUMBER_1 + nbErrorsLocal + ERRORS_NUMBER_2 + summaryFile);
-			} // Sinon le bordereau n'est pas généré.
+			//} // Sinon le bordereau n'est pas généré.
 		}
 
 		if (currentPass == 1) {
@@ -566,6 +596,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 					int nbDocs = currentContainsNode.getNbDocuments();
 					bGenererElement.setValue(nbDocs > 0 ? 1 : 0);
 					TRACESWRITER.trace("DOCLIST docs " + currentDocumentTypeId + " contains " + nbDocs + " documents");
+					archiveDocuments.prepareListForType(currentContainsNode.getRelativeContext(), false);
 				}
 			}
 		} else {
@@ -603,10 +634,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		if (firstStep != null) {
 			xPath = XPathFactory.newInstance().newXPath();
 			try {
+                String stDocumentIdentification = SEDA_version == "1.0" 
+                        ? NOEUD_ARCHIVALAGENCYDOCUMENTIDENTIFIER : NOEUD_IDENTIFICATION;
 				thirdNodeList = (NodeList) xPath
 						.evaluate("/grammar/define[@name='"
 								+ firstStep.getAttributes().getNamedItem("name").getNodeValue()
-								+ "']//element[@name='Identification']/ref", docIn.getDocumentElement(),
+								+ "']//element[@name='"
+                                + stDocumentIdentification
+                                + "']/ref", docIn.getDocumentElement(),
 								XPathConstants.NODESET); // En référence à la
 															// troisième étape.
 				if (thirdNodeList.getLength() > 0) {
@@ -780,7 +815,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 																														// name="ContentDescriptive"
 
 													if (dataNode != null) {
-														keywordReferenceSchemeID = getKeywordReferenceSchemeId(dataNode);
+														keywordReferenceSchemeID = getKeywordReferenceSchemeId(dataNode, context);
 													}
 
 													int nbKeywords = archiveDocuments.getNbkeys(NOEUD_KEYWORDCONTENT,
@@ -834,6 +869,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 													if (refFPPNode != null) {
 														tagFilePlanPosition = lookupForAttribute(ATTR_NAME_SCHEME_ID,
 																refFPPNode);
+														if (tagFilePlanPosition != null)
+															tagFilePlanPosition = getDocumentTypeId(tagFilePlanPosition, context);
 													}
 													// int nbFilePlanPosition = archiveDocuments.getNbkeys(
 													// NOEUD_FILEPLANPOSITION, tagFilePlanPosition, null);
@@ -906,7 +943,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 										}
 										if (context.endsWith(CONTEXT_END_INTEGRITY)
 												&& ATTR_NAME_ALGORITHME.equals(attrName)) {
-											value = getHashAlgorithm(archiveDocuments.getFileName());
+											value = getCurrentDocumentHashAlgorithm();
 										}
 									}
 									try {
@@ -1121,8 +1158,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				double sizeOfDocuments = 0;
 				archiveDocuments.prepareCompleteList();
 				while (archiveDocuments.nextDocument()) {
-					File f = new File(SAE_FilePath + "/" + archiveDocuments.getFileName());
-					long taille = f.length();
+					long taille = getCurrentDocumentSize();
 					sizeOfDocuments += taille;
 				}
 				TRACESWRITER.trace("Size computed = '" + sizeOfDocuments + "'");
@@ -1179,14 +1215,14 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				break;
 			case "/ArchiveTransfer/Archive/ContentDescription/Description": // SEDA 1.0
 			case "/ArchiveTransfer/Contains/ContentDescription/Description": // SEDA 0.2
-				dataString = archiveDocuments.getKeyValue(KEY_DESCRIPTION);
+				dataString = archiveDocuments.getKeyValue(KEY_CONTENTDESCRIPTION + KEY_TAG_SEPARATOR + KEY_DESCRIPTION);
 				break;
 			case "/ArchiveTransfer/Archive/ContentDescription/Keyword/KeywordContent": // SEDA
 																						// 1.0
 			case "/ArchiveTransfer/Contains/ContentDescription/ContentDescriptive/KeywordContent": // SEDA
 																									// 0.2
 				String keywordReferenceSchemeID = null;
-				keywordReferenceSchemeID = getKeywordReferenceSchemeId(node);
+				keywordReferenceSchemeID = getKeywordReferenceSchemeId(node, context);
 				if (multipleSearch) {
 					dataString = archiveDocuments.getNextKeyValue(KEY_KEYWORDCONTENT, null, keywordReferenceSchemeID);
 					// multipleSearch = false;
@@ -1197,19 +1233,29 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 							+ CsvArchiveDocuments.END_TAG_CAR);
 				}
 				break;
+				/*
 			case "/ArchiveTransfer/Archive/ArchiveObject/TransferringAgencyObjectIdentifier": // SEDA
 																								// 1.0
 			case "/ArchiveTransfer/Contains/Contains/TransferringAgencyObjectIdentifier": // SEDA
 																							// 0.2
 				dataString = "TODO: '" + context + "'";
 				break;
+				*/
 			default:
 				if (context.endsWith(CONTEXT_END_INTEGRITY)) {
-					dataString = getHash(archiveDocuments.getFileName());
+					dataString = getCurrentDocumentHash();
+				} else if (context.endsWith(CONTEXT_DOCUNIT_SIZE)) { // SEDA 0.2
+					double sizeOfDocuments = 0;
+					archiveDocuments.prepareListForType(currentContainsNode.getRelativeContext(), false);
+					while (archiveDocuments.nextDocument()) {
+						long taille = getCurrentDocumentSize();
+						sizeOfDocuments += taille;
+					}
+					TRACESWRITER.trace("Size computed = '" + sizeOfDocuments + "'");
+					dataString = convertUnit(sizeOfDocuments, node);
 				} else if (context.endsWith(CONTEXT_END_DOCSIZE)) {
 					double sizeOfDocuments = 0;
-					File f = new File(SAE_FilePath + "/" + archiveDocuments.getFileName());
-					long taille = f.length();
+					long taille = getCurrentDocumentSize();
 					sizeOfDocuments += taille;
 					TRACESWRITER.trace("Size computed = '" + sizeOfDocuments + "'");
 					dataString = convertUnit(sizeOfDocuments, node);
@@ -1233,7 +1279,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 						|| context.endsWith("Contains/ContentDescription/ContentDescriptive/KeywordContent")) { // SEDA
 																												// 0.2
 					String keywordReferenceSchemeIDDefault = null;
-					keywordReferenceSchemeIDDefault = getKeywordReferenceSchemeId(node);
+					keywordReferenceSchemeIDDefault = getKeywordReferenceSchemeId(node, context);
 					if (multipleSearch) {
 						dataString = archiveDocuments.getNextKeyValue(KEY_KEYWORDCONTENT,
 								ROOT.equals(currentDocumentTypeId) ? null : currentContainsNode.getRelativeContext(),
@@ -1257,7 +1303,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 						// 1.0
 						|| context.endsWith("Contains/ContentDescription/Description")) { // SEDA
 					// 0.2
-					dataString = archiveDocuments.getKeyValue(KEY_DESCRIPTION + CsvArchiveDocuments.BEGINNING_TAG_CAR
+					dataString = archiveDocuments.getKeyValue(KEY_CONTENTDESCRIPTION + KEY_TAG_SEPARATOR + KEY_DESCRIPTION + CsvArchiveDocuments.BEGINNING_TAG_CAR
 							+ currentContainsNode.getRelativeContext() + CsvArchiveDocuments.END_TAG_CAR);
 				} else if (context.endsWith("ContentDescription/FilePlanPosition") // SEDA
 						// 1.0
@@ -1270,6 +1316,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 					defineFilePlanPosition = node.getParentNode();
 					filePlanPositionSchemeId = lookupForAttribute(ATTR_NAME_SCHEME_ID, defineFilePlanPosition);
+					if (filePlanPositionSchemeId != null)
+						filePlanPositionSchemeId = getDocumentTypeId(filePlanPositionSchemeId, context);
 
 					if (!currentDocumentTypeId.equals(ROOT)) {
 						tag.append(currentContainsNode.getRelativeContext());
@@ -1289,6 +1337,10 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 									+ CsvArchiveDocuments.END_TYPE_CAR + CsvArchiveDocuments.END_TAG_CAR);
 						}
 					}
+				} else if (context.endsWith(TAG_TAOI)) {
+					dataString = sae.getShortTransferId() + "_" + String.format("%05d", objectIdentifier);
+				} else if (context.endsWith(TAG_TAAI)) {
+					dataString = sae.getShortTransferId();
 				} else {
 					TRACESWRITER.trace("getData  ----  !!!! context '" + context + "' Unhandled in '"
 							+ node.getNodeName() + "'");
@@ -1306,7 +1358,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * @param dataNode : noeud rng:data du mot-clé
 	 * @return String schemeId ou "" si non trouvé.
 	 */
-	private String getKeywordReferenceSchemeId(Node dataNode) throws TechnicalException {
+	private String getKeywordReferenceSchemeId(Node dataNode, String context) throws TechnicalException {
 		String result;
 		Node parentDefineNode;
 		String nameParentDefineNode;
@@ -1368,7 +1420,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			throw new TechnicalException(e.getLocalizedMessage(), e);
 		}
 
-		return result;
+		if (result != null) 
+			return getDocumentTypeId(result, context);
+		else {
+			// On ne produit pas d'erreur ici, car on aura un message indiquant qu'un 
+			// #KeywordContent est absent des données métier 
+			return null;
+		}
 	}
 
 	/**
@@ -1413,7 +1471,9 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * fonction utilitaire utilisée par genElement
 	 */
 	private String getTag(String tag, String context) throws TechnicalException {
-
+		if (currentPass == 1)
+			return "";
+		
 		String dateString = null;
 		String dateStringIn;
 		SimpleDateFormat sdfBordereauZ = new SimpleDateFormat(FORMAT_DATE_BORDEREAU);
@@ -1421,35 +1481,48 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 		switch (tag) {
 		case TAG_RECEIPT:
-			throw new RuntimeException("TODO: Receipt");
+			return "TODO: Receipt";
 
 		case TAG_TYPE:
-			throw new RuntimeException("TODO: Type");
+			return "TODO: Type";
 
 		case TAG_ISSUE:
-			throw new RuntimeException("TODO: Issue");
+			return "TODO: Issue";
 
 		case TAG_DURATION:
-			throw new RuntimeException("TODO: Duration");
+			return "TODO: Duration";
 
 		case TAG_CREATION:
 			dateStringIn = archiveDocuments.getDocumentDate();
-			try {
-				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
-			} catch (TechnicalException e) {
-				dateString = new StringBuilder().append("#DATAERR: date ").append(dateStringIn).toString();
-				errorMessage = new StringBuilder()
-						.append("#DATAERR: La date '")
-						.append(dateStringIn)
-						.append("' du document '")
-						.append(archiveDocuments.getFileName())
-						.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
-				throw new TechnicalException(errorMessage.toString(), e);
-			}
+			if ( ! "".equals(dateStringIn)) {
+				try {
+					dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
+				} catch (TechnicalException e) {
+					dateString = new StringBuilder().append("#DATAERR: date ").append(dateStringIn).toString();
+					errorMessage = new StringBuilder()
+							.append("#DATAERR: La date '")
+							.append(dateStringIn)
+							.append("' du document '")
+							.append(archiveDocuments.getFileName())
+							.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
+					logAndAddErrorsList(errorMessage.toString());
+					// throw new TechnicalException(errorMessage.toString(), e);
+				}				
+			} else { // Date non fournie
+                try {
+                    Path file = Paths.get(SAE_FilePath + "/" + archiveDocuments.getFileName());
+                    BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+
+                    FileTime date = attr.lastModifiedTime();
+                    dateString = tryParseDateDifferentFormat(date.toString(), tag, context);
+                } catch (IOException e) { // on se contente de ne pas calculer
+                    
+                }
+            }
 			break;
 
 		case TAG_OLDESTDATE:
-			dateStringIn = archiveDocuments.getOldestDate();
+			dateStringIn = archiveDocuments.getOldestDate(currentContainsNode.getRelativeContext());
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));
@@ -1458,10 +1531,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				errorMessage = new StringBuilder()
 						.append("#DATAERR: La date '")
 						.append(dateStringIn)
-						.append("' du document '")
-						.append(archiveDocuments.getFileName())
+						.append("' '")
+						.append(tag)
 						.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
-				throw new TechnicalException(errorMessage.toString(), e);
+				logAndAddErrorsList(errorMessage.toString());
+				// throw new TechnicalException(errorMessage.toString(), e);
 			}
 
 			break;
@@ -1469,7 +1543,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		case TAG_STARTDATE:
 
 		case TAG_LATESTDATE:
-			dateStringIn = archiveDocuments.getLatestDate();
+			dateStringIn = archiveDocuments.getLatestDate(currentContainsNode.getRelativeContext());
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));
@@ -1478,10 +1552,11 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				errorMessage = new StringBuilder()
 						.append("#DATAERR: La date '")
 						.append(dateStringIn)
-						.append("' du document '")
-						.append(archiveDocuments.getFileName())
+						.append("' '")
+						.append(tag)
 						.append("' ne correspond pas à une date réelle ou son format est incorrect. Format attendu JJ/MM/AAAA hh:mm:ss");
-				throw new TechnicalException(errorMessage.toString(), e);
+				logAndAddErrorsList(errorMessage.toString());
+				// throw new TechnicalException(errorMessage.toString(), e);
 			}
 
 			break;
@@ -1522,8 +1597,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 						elementCourantW = createChildElement(NOEUD_CONTAINS, elementCourantW, docOut);
 						elementCourantW.setAttribute(ATTR_NAME_ALGORITHME,
-								getHashAlgorithm(archiveDocuments.getFileName()));
-						elementCourantW.setTextContent(getHash(archiveDocuments.getFileName()));
+								getCurrentDocumentHashAlgorithm());
+						elementCourantW.setTextContent(getCurrentDocumentHash());
 						currentNodeW = getParentElementFromNode(elementCourantW);
 
 						elementCourantW = (Element) currentNodeW;
@@ -1663,34 +1738,35 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	}
 
 	/**
-	 * getHash récupère l'empreinte dans le fichier des données métiers ou la calcule.
+	 * getHash récupère l'empreinte dans le fichier des données métier ou la calcule.
 	 *
 	 * @param documentFileName permet de calculer l'empreinte si nécessaire
 	 * @return
 	 */
-	private String getHash(String documentFileName) {
+	private String getCurrentDocumentHash() {
 		String hash = null;
 
-		hash = archiveDocuments.getHash();
+		hash = archiveDocuments.getDocumentHash();
 
 		if (hash == null) {
-			hash = computeHash(documentFileName);
+			hash = computeHash(archiveDocuments.getFileName());
 		}
 
 		return hash;
 	}
+	
 
 	/**
-	 * getHashAlgorithm récupère l'algorithme de l'empreinte dans le fichier des données métiers renvoie la valeur par
+	 * getHashAlgorithm récupère l'algorithme de l'empreinte dans le fichier des données métier renvoie la valeur par
 	 * défaut
 	 *
 	 * @param documentFileName permet de calculer l'empreinte si nécessaire
 	 * @return
 	 */
-	private String getHashAlgorithm(String documentFileName) {
+	private String getCurrentDocumentHashAlgorithm() {
 		String hashAlgorithm = null;
 
-		hashAlgorithm = archiveDocuments.getHashAlgorithm();
+		hashAlgorithm = archiveDocuments.getDocumentHashAlgorithm();
 
 		if (hashAlgorithm == null) {
 			hashAlgorithm = DEFAULT_ALGORITHM;
@@ -1698,6 +1774,35 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 
 		return hashAlgorithm;
 	}
+
+	/**
+	 * getSize récupère la taille dans le fichier des données métier ou la calcule.
+	 *
+	 * @param documentFileName permet de calculer la taille si nécessaire
+	 * @return
+	 */
+	private long getCurrentDocumentSize() {
+		String stTaille = null;
+		long taille = 0L;
+
+		stTaille = archiveDocuments.getDocumentSize();
+
+		if (stTaille != null) {
+			try {
+				taille = Long.parseLong(stTaille);
+			}
+			catch (NumberFormatException e) {
+				stTaille = null;
+			}
+		}
+		if (stTaille == null) {
+			File f = new File(SAE_FilePath + "/" + archiveDocuments.getFileName());
+			taille = f.length();
+		}
+
+		return taille;
+	}
+	
 
 	private String formatContainsIdentifier(String containsIdentifier, int numeroTag) {
 		// TODO?: containsIdentifier - '+' + '[' + numéro d'ordre + ']'
@@ -1789,7 +1894,6 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		// on considère le document "doc" comme étant la source d'une
 		// transformation XML
 		Source source = new DOMSource(doc);
-
 		// le résultat de cette transformation sera un flux d'écriture dans
 		// un fichier
 
@@ -1902,24 +2006,24 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * @param filenameOutput
 	 */
 	public boolean writeErrorsIfExist(String filenameOutput) throws TechnicalException {
-		ArrayList<String> errorsListLocal = getErrorsList();
 		boolean existErrors = false;
-		if (errorsListLocal.size() > 0) {
-			existErrors = true;
-			try {
-				FileWriter writer = new FileWriter(filenameOutput);
+		try {
+			FileWriter writer = new FileWriter(filenameOutput);
+			ArrayList<String> errorsListLocal = getErrorsList();
+			if (errorsListLocal.size() > 0) {
+				existErrors = true;
 				for (String str : errorsListLocal) {
 					writer.write(str + "\n");
 				}
-				writer.close();
-				TRACESWRITER.trace(ERRORS_IN_FILE + filenameOutput);
-			} catch (IOException e) {
-				throw new TechnicalException(ERRORS_UNABLE_TO_WRITE_IN_FILE + filenameOutput + " : "
-						+ e.getLocalizedMessage(), e);
+			} else {
+				existErrors = false;
+				TRACESWRITER.trace(TRACE_NO_ERROR_TO_WRITE + filenameOutput);
 			}
-		} else {
-			existErrors = false;
-			TRACESWRITER.trace(TRACE_NO_ERROR_TO_WRITE + filenameOutput);
+			writer.close();
+			TRACESWRITER.trace(ERRORS_IN_FILE + filenameOutput);
+		} catch (IOException e) {
+			throw new TechnicalException(ERRORS_UNABLE_TO_WRITE_IN_FILE + filenameOutput + " : "
+					+ e.getLocalizedMessage(), e);
 		}
 		return existErrors;
 	}
