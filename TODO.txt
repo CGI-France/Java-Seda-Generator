@@ -1,4 +1,9 @@
 **************************
+2017-10-17
+	On n'a pas de message d'erreur si l'on demande la taille des documents mais que les fichiers ne sont pas accessibles
+		Note : c'est OK pour l'empreinte
+
+**************************
 2017-03-17
 
 	Prévoir LatestDate te OldestDate dans les données métier (plus gestion des dates de départ communicabilité et sort final)
