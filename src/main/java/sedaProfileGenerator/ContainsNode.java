@@ -19,13 +19,15 @@ import exception.TechnicalException;
  * des tag numérotés qui font partie de ses parents
  * */
 public class ContainsNode {
-	private static final Logger SLF4JLOGGER = LoggerFactory.getLogger(ContainsNode.class);
+	private static final Logger TRACESWRITER = LoggerFactory.getLogger(CsvArchiveDocuments.class);
 	private static final String LOT_END_TAG = "+";
 	private static final String LOT_PATTERN = "\\[#(\\d+)\\]";
 	private static final String LOT_PATTERN_BEGINNING = "[#";
 	private static final String LOT_PATTERN_END = "]";
 	private static final String RELATIVE_CONTEXT_PATTERN = ".*\\[#(\\d+)\\]";
 	private static final String CONTEXT_SEPARATOR = "//";
+	private static final String DEFAULT_OLDEST_DATE = "9999-12-31";
+	private static final String DEFAULT_LATEST_DATE = "1970-01-01";
 
 	private int nbDocuments;
 	private boolean mandatory; // indique que l'unité documentaire est
@@ -39,6 +41,9 @@ public class ContainsNode {
 	private String objectIdentifier;
 	private ArrayList<ContainsNode> childrens = new ArrayList<ContainsNode>();;
 	private ContainsNode parent;
+
+	private String oldestDate = null;
+	private String latestDate = null;
 
 	/**
 	 * Le premier nœud doit être créé avec un parentNode null
@@ -117,6 +122,43 @@ public class ContainsNode {
 		}
 	}
 
+	/**
+	 * Permet de mettre à jour la date la plus ancienne et la plus récente des documents courants
+	 */
+	public void setDates(String oldestDate, String latestDate) {
+		this.oldestDate = oldestDate;
+		this.latestDate = latestDate;
+	}
+
+	public String getLatestDate() {
+		return latestDate;
+	}
+	
+	public String getOldestDate() {
+		return oldestDate;
+	}
+	
+	/**
+	 * Utilisé à partir de la racine, permet de calculer les dates extrêmes
+	 * de toute l'arborescence
+	 */
+	public void computeAllNodesDates() {
+		if (oldestDate == null)
+			oldestDate = DEFAULT_OLDEST_DATE;
+		if (latestDate == null)
+			latestDate = DEFAULT_LATEST_DATE;
+
+		for (ContainsNode node : this.childrens) {
+			node.computeAllNodesDates();
+			if (node.getOldestDate().compareTo(oldestDate) < 0)
+				oldestDate = node.getOldestDate();
+			if (node.getLatestDate().compareTo(latestDate) > 0)
+				latestDate = node.getLatestDate();
+		}
+		TRACESWRITER.debug("computeAllNodesDates 3 '" + objectIdentifier + "' are '" + oldestDate + "' to '"
+				+ latestDate + "'");
+	}
+	
 	/**
 	 * Utilisé à partir de la racine, permet de parcourir l'ensemble de l'arbre comme un vecteur. Retourne null si il
 	 * n'y a plus d'éléments dans l'arbre
