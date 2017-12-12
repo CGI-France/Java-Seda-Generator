@@ -35,3 +35,6 @@ v1.1.0 :
 v1.1.1 :
 	- Génération de la balise TransferringAgencyObjectIdentifier et TransferringAgencyArchiveIdentifier
 
+v1.1.3 :
+	- Correction bug des dates extrêmes non calculées sur les unités documentaires sans documents
+	

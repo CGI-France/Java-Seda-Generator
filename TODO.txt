@@ -1,5 +1,0 @@
-**************************
-2017-03-17
-
-	Prévoir LatestDate te OldestDate dans les données métier (plus gestion des dates de départ communicabilité et sort final)
-  Ceci sera utile pour les matrices cadastrales par exemple
