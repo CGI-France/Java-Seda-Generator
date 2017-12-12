@@ -81,19 +81,19 @@ public abstract class AbstractArchiveDocuments {
 	abstract public String getDocumentSize();
 
 	/**
-	 * Calcule les dates extrêmes pour une unité documentaire
+	 * Calcule les dates extrêmes pour la liste de documents courante
 	 */
-	abstract public void computeDates(String archiveObjectIdentifier) throws TechnicalException;
+	abstract public void computeDates() throws TechnicalException;
 	
 	/**
 	 * Donne la date la plus récente calculée par computeDates
 	 */
-	abstract public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException;
+	abstract public String getLatestDate();
 
 	/**
 	 * Donne la date la plus ancienne calculée par computeDates
 	 */
-	abstract public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException;
+	abstract public String getOldestDate();
 
 	/**
 	 * Donne la valeur de la clé
