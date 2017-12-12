@@ -21,7 +21,7 @@ public abstract class AbstractArchiveDocuments {
 	/**
 	 * Retourne le nombre de documents référençant le type docListType
 	 */
-	abstract public boolean isThereDocumentsReferringToType(String docListType);
+	abstract public boolean isThereDocumentsReferringToType(String docListType, ContainsNode currentContainsNode);
 
 	/**
 	 * Prépare une liste de documents qui sont identifiés comme docListType retourne le nombre de documents
@@ -66,23 +66,34 @@ public abstract class AbstractArchiveDocuments {
 	 * Donne l'algorithme de l'empreinte pour l'élément courant (positionné par nextDocument ou prepareCompleteList ou
 	 * prepareListForType)
 	 */
-	abstract public String getHashAlgorithm();
+	abstract public String getDocumentHashAlgorithm();
 
 	/**
 	 * Donne l'empreinte pour l'élément courant (positionné par nextDocument ou prepareCompleteList ou
 	 * prepareListForType)
 	 */
-	abstract public String getHash();
+	abstract public String getDocumentHash();
 
 	/**
-	 * Donne la date la plus récente de la liste préparée par prepareCompleteList ou prepareListForType
+	 * Donne la taille pour l'élément courant (positionné par nextDocument ou prepareCompleteList ou
+	 * prepareListForType)
 	 */
-	abstract public String getLatestDate() throws TechnicalException;
+	abstract public String getDocumentSize();
 
 	/**
-	 * Donne la date la plus ancienne de la liste préparée par prepareCompleteList ou prepareListForType
+	 * Calcule les dates extrêmes pour une unité documentaire
 	 */
-	abstract public String getOldestDate() throws TechnicalException;
+	abstract public void computeDates(String archiveObjectIdentifier) throws TechnicalException;
+	
+	/**
+	 * Donne la date la plus récente calculée par computeDates
+	 */
+	abstract public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException;
+
+	/**
+	 * Donne la date la plus ancienne calculée par computeDates
+	 */
+	abstract public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException;
 
 	/**
 	 * Donne la valeur de la clé

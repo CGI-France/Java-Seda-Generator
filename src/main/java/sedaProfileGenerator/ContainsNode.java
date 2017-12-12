@@ -213,4 +213,13 @@ public class ContainsNode {
 	public ArrayList<ContainsNode> getChildrens() {
 		return childrens;
 	}
+
+	public String getObjectIdentifier() {
+		return objectIdentifier;
+	}
+
+	public void setObjectIdentifier(String objectIdentifier) {
+		this.objectIdentifier = objectIdentifier;
+	}
+
 }

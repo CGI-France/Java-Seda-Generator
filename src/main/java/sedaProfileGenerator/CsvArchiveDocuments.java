@@ -46,6 +46,8 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	private ArrayList<String[]> partialDocumentsList = new ArrayList<String[]>();
 	private Enumeration<String[]> partialDocumentsListEnumerator;
 	private String[] currentPartialDocument = null;
+	private String partialDocumentsListCurrentDocType = null;
+	private String currentArchiveObjectIdentifier = null;
 	private String lastError;
 
 	private String oldestDate = null;
@@ -87,6 +89,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	private static final String ERROR_REFER_END = "à des documents";
 	private static final String ERROR_NOT_FOUND = "Error not found";
 	private static final String ERROR_DATAERR_BEGIN = "#DATAERR:";
+    private static final String ERROR_INCORRECT_NUMBER_OF_SEPARATOR = "#DATAERR: Nombre de séparateurs incorrect en ligne '";
 	private static final String ERROR_DATAERR_FILENAME = "#DATAERR: Le nom de fichier du document n'a pas été trouvé dans : '";
 	private static final String ERROR_DATAERR_NAME = "#DATAERR: Le nom du document n'a pas été trouvé dans : '";
 	private static final String ERROR_DATAERR_DATE = "#DATAERR: La date du document n'a pas été trouvée dans : '";
@@ -108,14 +111,15 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 
 	private static final int NB_TAG_LINE_VALUE_FIELDS = 2;
 	private static final int NB_MIN_DOCUMENT_LINE_FIELDS = 2;
-	private static final int NB_MAX_DOCUMENT_LINE_FIELDS = 6; // Il y a deux champs en plus lorsque l'empreinte est
-																// renseignée.
+	private static final int NB_MAX_DOCUMENT_LINE_FIELDS = 7;	// Il y a deux champs en plus lorsque l'empreinte est renseignée
+																// Il y a trois champs en plus lorsque la taille est renseignée
 	private static final int FILENAME_LOCATION = 1;
 	private static final int TYPE_LOCATION = 2;
 	private static final int NAME_LOCATION = 3;
 	private static final int DATE_LOCATION = 4;
 	private static final int ALGO_LOCATION = 5;
 	private static final int HASH_LOCATION = 6;
+	private static final int SIZE_LOCATION = 7;
 
 	public CsvArchiveDocuments() {
 
@@ -124,6 +128,18 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 		currentKey2searchCounter = 1;
 
 	}
+
+        /*
+         * Indique si la ligne est une ligne de données ou une ligne de commentaires
+         * Les lignes de commentaires commencent par une espace ou une tabulation
+         *
+         * @param line la ligne de données à vérifier
+         * @return true si la ligne est une ligne de données
+         * @return false si la ligne est une ligne de commentaire (commence par espace ou tabulation
+         * */
+        private boolean isThisLineALineOfData(String line) {
+            return line.length() > 0 && line.charAt(0) != '#';
+        }
 
 	/**
 	 * Charge un fichier de données métiers
@@ -151,32 +167,32 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 			while ((line = br.readLine()) != null) {
 				currentLine++;
 				isLineMalformed = false;
-				if (line.length() > 0) {
-					line = removeUTF8BOM(line);
-					rgxSeperator = EMPTY + line.charAt(0);
-					elements = line.split(rgxSeperator);
-					elementsLength = elements.length;
-					if (elementsLength > 2) {
-						if (StringUtils.isNotEmpty(elements[1]) && elements[1].startsWith(BEGINNING_CAR)) {
-							if (elementsLength != (NB_TAG_LINE_VALUE_FIELDS + 1)) {
-								isLineMalformed = true;
-							} else {
-								keyList.add(elements);
-							}
-						} else {
-							if (elementsLength < (NB_MIN_DOCUMENT_LINE_FIELDS + 1)
-									|| elementsLength > (NB_MAX_DOCUMENT_LINE_FIELDS + 1)) {
-								isLineMalformed = true;
-							} else {
-								documentsList.add(elements);
-							}
-						}
-					} else {
-						isLineMalformed = true;
-					}
-					if (isLineMalformed) {
-						logAndAddErrorsList(ERROR_MALFORMED_LINE + Arrays.toString(elements));
-					}
+                line = removeUTF8BOM(line);
+                if ( isThisLineALineOfData(line) ) {
+                    rgxSeperator = EMPTY + line.charAt(0);
+                    elements = line.split(rgxSeperator);
+                    elementsLength = elements.length;
+                    if (elementsLength > 2) {
+                        if (StringUtils.isNotEmpty(elements[1]) && elements[1].startsWith(BEGINNING_CAR)) {
+                            if (elementsLength != (NB_TAG_LINE_VALUE_FIELDS + 1)) {
+                                isLineMalformed = true;
+                            } else {
+                                keyList.add(elements);
+                            }
+                        } else {
+                            if (elementsLength < (NB_MIN_DOCUMENT_LINE_FIELDS + 1)
+                                    || elementsLength > (NB_MAX_DOCUMENT_LINE_FIELDS + 1)) {
+                                isLineMalformed = true;
+                            } else {
+                                documentsList.add(elements);
+                            }
+                        }
+                    } else {
+                        isLineMalformed = true;
+                    }
+                    if (isLineMalformed) {
+                        logAndAddErrorsList(ERROR_MALFORMED_LINE + Arrays.toString(elements));
+                    }
 				}
 				lastError = EMPTY;
 			}
@@ -213,7 +229,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#isThereDocumentsReferringToType(java.lang.String)
 	 */
 	@Override
-	public boolean isThereDocumentsReferringToType(String docListType) {
+	public boolean isThereDocumentsReferringToType(String docListType, ContainsNode currentContainsNode) {
 
 		TRACESWRITER.trace(TRACE_BEGIN_IS_THERE_DOCUMENTS_REFERRING_TO_TYPE_1 + docListType
 				+ TRACE_BEGIN_IS_THERE_DOCUMENTS_REFERRING_TO_TYPE_2);
@@ -225,7 +241,10 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 				for (int j = 0; j < split.length; j++) {
 					String part = split[j];
 					if (getTagWithoutDocumentIdentification(part).equals(docListType)) {
-						atLeastOne = true;
+						if (elements[TYPE_LOCATION].contains(currentContainsNode.getRelativeContext())
+								|| currentContainsNode.getObjectIdentifier().equals("root")) {
+							atLeastOne = true;
+						}
 						break;
 					}
 				}
@@ -252,9 +271,14 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	@Override
 	public int prepareListForType(String docListType, boolean withDocumentIdentification) {
 
+		// Si la liste a déjà été préparée pour ce type de document, on ne fait rien
+		if (partialDocumentsListCurrentDocType != null && docListType.equals(partialDocumentsListCurrentDocType))
+			return partialDocumentsList.size();
+		
 		TRACESWRITER.trace(TRACE_BEGIN_PREPARE_LIST_FOR_TYPE_1 + docListType + TRACE_BEGIN_PREPARE_LIST_FOR_TYPE_2);
 		int counter = 0;
 		partialDocumentsList.clear();
+		partialDocumentsListCurrentDocType = docListType;
 		for (int i = 0; i < documentsList.size(); i++) {
 			String[] elements = documentsList.get(i);
 			if ((withDocumentIdentification == true && elements[TYPE_LOCATION].equals(docListType))
@@ -398,7 +422,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 				addActionError(errorMessage.toString());
 				dateLocal = ERROR_NOT_FOUND;
 			} else {
-				dateLocal = tabCurrent[4];
+				dateLocal = tabCurrent.length > 4 ? tabCurrent[4] : "";
 			}
 		}
 		if (dateLocal == null) {
@@ -409,26 +433,21 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	}
 
 	/**
-	 * Permet de récupérer l'algorithme utilisé pour l'empreinte des données métiers ou de recevoir la valeur par défaut
+	 * Permet de récupérer l'algorithme utilisé pour l'empreinte des données métier
 	 *
-	 * @return l'algorithme de calcul d'empreinte si il est présent dans les données métier (avec une valeur
-	 *         d'empreinte), null sinon
+	 * @return l'algorithme de calcul d'empreinte si il est présent dans les données métier, null sinon
 	 */
 	@Override
-	public String getHashAlgorithm() {
+	public String getDocumentHashAlgorithm() {
 
 		String returnHashAlgorithm;
-		String hashAlgorithmFromDataFile;
-		String hashFromDataFile;
 
 		String[] tabCurrent = currentPartialDocument;
 		returnHashAlgorithm = null;
 
-		if (!(tabCurrent == null) && tabCurrent.length >= 7) {
-			hashAlgorithmFromDataFile = tabCurrent[ALGO_LOCATION];
-			hashFromDataFile = tabCurrent[HASH_LOCATION];
-			if (StringUtils.isNotEmpty(hashAlgorithmFromDataFile) && StringUtils.isNotEmpty(hashFromDataFile)) {
-				returnHashAlgorithm = hashAlgorithmFromDataFile;
+		if (tabCurrent != null && tabCurrent.length >= (HASH_LOCATION + 1)) {
+			if (StringUtils.isNotEmpty(tabCurrent[ALGO_LOCATION]) && StringUtils.isNotEmpty(tabCurrent[HASH_LOCATION])) {
+				returnHashAlgorithm = tabCurrent[ALGO_LOCATION];
 			}
 		}
 
@@ -437,25 +456,21 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	}
 
 	/**
-	 * Permet de récupérer l'empreinte des données métiers ou de la calculer
+	 * Permet de récupérer l'empreinte des données métier
 	 *
-	 * @return l'empreinte si elle est présente dans les données métier (avec un algorithme), null sinon
+	 * @return l'empreinte si elle est présente dans les données métier, null sinon
 	 */
 	@Override
-	public String getHash() {
+	public String getDocumentHash() {
 
 		String returnHash;
-		String hashAlgorithmFromDataFile;
-		String hashFromDataFile;
 
 		String[] tabCurrent = currentPartialDocument;
 		returnHash = null;
 
-		if (!(tabCurrent == null) && tabCurrent.length >= 7) {
-			hashAlgorithmFromDataFile = tabCurrent[ALGO_LOCATION];
-			hashFromDataFile = tabCurrent[HASH_LOCATION];
-			if (StringUtils.isNotEmpty(hashAlgorithmFromDataFile) && StringUtils.isNotEmpty(hashFromDataFile)) {
-				returnHash = hashFromDataFile;
+		if (tabCurrent != null && tabCurrent.length >= (HASH_LOCATION + 1)) {
+			if (StringUtils.isNotEmpty(tabCurrent[ALGO_LOCATION]) && StringUtils.isNotEmpty(tabCurrent[HASH_LOCATION])) {
+				returnHash = tabCurrent[HASH_LOCATION];
 			}
 		}
 
@@ -464,32 +479,129 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	}
 
 	/**
-	 * Donne la date la plus récente de la liste préparée par prepareCompleteList ou prepareListForType (methode de
+	 * Permet de récupérer la taille du document fournie par les données métier
+	 *
+	 * @return la taille si elle est présente dans les données métier, null sinon
+	 */
+	@Override
+	public String getDocumentSize() {
+
+		String returnSize = null;
+
+		if (currentPartialDocument != null && currentPartialDocument.length >= (SIZE_LOCATION + 1)) {
+			returnSize = currentPartialDocument[SIZE_LOCATION];
+		}
+
+		return returnSize;
+
+	}
+	
+	private boolean elementMatchesDocumentIdentifier(String elementType, String archiveObjectIdentifier) {
+		// On enlève progressivement de elementType les parties d'identifiant jusqu'à trouver une correspondance
+		// On ne traite pas les documents (par ex :  NODE1//NODE2[#3]//NODE4{DOC}
+		// Ex : NODE1//NODE2[#3]//NODE4
+		// se décompose en :
+		// NODE1//NODE2[#3]//NODE4
+		// NODE1//NODE2[#3]
+		// NODE1
+		// "root" correspond à tous les documents
+		if (archiveObjectIdentifier.equals("root"))
+			return true;
+		int indexSeparator = 0;
+		while (indexSeparator != -1) {
+			if (elementType.equals(archiveObjectIdentifier))
+				return true;
+			indexSeparator = elementType.lastIndexOf("//");
+			if (indexSeparator != -1)
+				elementType = elementType.substring(0, indexSeparator);
+		}
+
+		return false;
+	}
+
+	/**
+	 * Calcule les dates extrêmes pour une unité documentaire
+	 *
+	 */
+	@Override
+	public void computeDates(String archiveObjectIdentifier) throws TechnicalException {
+
+		TRACESWRITER.trace("computeDates (" + archiveObjectIdentifier + ") through " + documentsList.size() + " documents");
+
+		oldestDate = DEFAULT_OLDEST_DATE;
+		latestDate = DEFAULT_LATEST_DATE;
+		String[] elements;
+		String dateString = "";
+		SimpleDateFormat pattern;
+		SimpleDateFormat sdfDefault = new SimpleDateFormat(DATE_PATTERN_1);
+		Date date;
+
+		List<String> knownPatterns = new ArrayList<String>();
+		knownPatterns.add(DATE_PATTERN_2);
+		knownPatterns.add(DATE_PATTERN_3);
+		knownPatterns.add(DATE_PATTERN_1);
+		knownPatterns.add(DATE_PATTERN_4);
+		int nbMatchingDocs = 0;
+		for (int i = 0; i < documentsList.size(); i++) {
+			elements = documentsList.get(i);
+			if (elementMatchesDocumentIdentifier(elements[TYPE_LOCATION], archiveObjectIdentifier)) {
+				++nbMatchingDocs;
+				if (elements.length > DATE_LOCATION) {
+					dateString = elements[DATE_LOCATION];
+					for (String patternString : knownPatterns) {
+						try {
+							Date oldest = sdfDefault.parse(oldestDate);
+							Date latest = sdfDefault.parse(latestDate);
+							pattern = new SimpleDateFormat(patternString);
+							date = pattern.parse(dateString);
+							if (date.before(oldest))
+								oldestDate = sdfDefault.format(date);
+							if (date.after(latest))
+								latestDate = sdfDefault.format(date);
+							break;
+						} catch (ParseException pe) {
+						} // On essaie plusieurs patterns
+					}
+				} else {
+					if (elements.length > FILENAME_LOCATION && !StringUtils.isEmpty(elements[FILENAME_LOCATION])) {
+						throw new TechnicalException(ERROR_COMPUTE_DATES_DOC_IDENTIFIED + elements[FILENAME_LOCATION]);
+					} else {
+						throw new TechnicalException(ERROR_COMPUTE_DATES);
+					}
+				}
+			}
+		}
+		currentArchiveObjectIdentifier = archiveObjectIdentifier;
+		TRACESWRITER.trace("OldestDate = '" + oldestDate + "' latestDate = '" + latestDate + "' nbMatchingDocs '" + nbMatchingDocs + "'");
+
+	}
+
+	/**
+	 * Donne la date la plus récente calculée par computeDates (methode de
 	 * remplacement) {@inheritDoc}
 	 * 
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getLatestDate()
 	 */
 	@Override
-	public String getLatestDate() throws TechnicalException {
+	public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException {
 
-		if (latestDate == null)
-			computeDates();
+		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
+			computeDates(archiveObjectIdentifier);
 		return latestDate;
 
 	}
 
 	/**
-	 * Donne la date la plus ancienne de la liste préparée par prepareCompleteList ou prepareListForType (methode de
+	 * Donne la date la plus ancienne calculée par computeDates (methode de
 	 * remplacement) {@inheritDoc}
 	 * 
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getOldestDate()
 	 */
 	@Override
-	public String getOldestDate() throws TechnicalException {
+	public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException {
 
-		if (oldestDate == null) {
-			computeDates();
-		}
+		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
+			computeDates(archiveObjectIdentifier);
 		return oldestDate;
 
 	}
@@ -648,59 +760,6 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 			logAndAddErrorsList(value);// TODO Le non
 		// renseignement d'une valeur de clé devient bloquant
 		return value;
-	}
-
-	/**
-	 * Calcule les dates extrêmes pour le fichier de données métiers.
-	 *
-	 */
-	private void computeDates() throws TechnicalException {
-
-		oldestDate = DEFAULT_OLDEST_DATE;
-		latestDate = DEFAULT_LATEST_DATE;
-		String[] elements;
-		String dateString = "";
-		SimpleDateFormat pattern;
-		SimpleDateFormat sdfDefault = new SimpleDateFormat(DATE_PATTERN_1);
-		Date date;
-
-		List<String> knownPatterns = new ArrayList<String>();
-		knownPatterns.add(DATE_PATTERN_2);
-		knownPatterns.add(DATE_PATTERN_3);
-		knownPatterns.add(DATE_PATTERN_1);
-		knownPatterns.add(DATE_PATTERN_4);
-
-		for (int i = 0; i < documentsList.size(); i++) {
-			elements = documentsList.get(i);
-			if (elements.length > DATE_LOCATION) {
-				dateString = elements[DATE_LOCATION];
-				for (String patternString : knownPatterns) {
-					try {
-						Date oldest = sdfDefault.parse(oldestDate);
-						Date latest = sdfDefault.parse(latestDate);
-						pattern = new SimpleDateFormat(patternString);
-						date = pattern.parse(dateString);
-						if (date.before(oldest)) {
-							oldestDate = sdfDefault.format(date);
-
-						}
-						if (date.after(latest)) {
-							latestDate = sdfDefault.format(date);
-
-						}
-						break;
-					} catch (ParseException pe) {
-					} // On essaie plusieurs patterns
-				}
-			} else {
-				if (elements.length > FILENAME_LOCATION && !StringUtils.isEmpty(elements[FILENAME_LOCATION])) {
-					throw new TechnicalException(ERROR_COMPUTE_DATES_DOC_IDENTIFIED + elements[FILENAME_LOCATION]);
-				} else {
-					throw new TechnicalException(ERROR_COMPUTE_DATES);
-				}
-			}
-		}
-
 	}
 
 	public ArrayList<String[]> getDocumentsList() {

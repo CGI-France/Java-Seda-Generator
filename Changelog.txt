@@ -1,7 +1,29 @@
-v1.0.1 :
+﻿v1.0.1 :
 	- Deconnexion possible de la base de données.
 v1.0.2 : 
 	- Contains.Name > ContainsName
 v1.0.3 : 
 	- Ajout de la possibilité d'exécuter une tâche du fichier job.config
 	- Correctif : sur Windows, suppression du bordereau s'il existe.
+	- Correction erreur en version 1.0 du SEDA sur gestion de l'identification des documents
+
+v1.1.1 :
+	- SimpleConfig : suppression des messages d'erreur des sections manquantes
+	- SimpleConfig: ordre de chargement des sections : la section demandée ou default ou la première si default n'existe pas
+	- ConfigFileDao: correction message incomplet sur erreur de chargement de l'accord de versement
+	- Retour des erreurs sur stderr pour tests automatisés
+	- Correction NullPointerException quand Keyword n'a pas de ArchivalAgencyObjectIdentifer/schemeID
+	- Correction NullPointerException si la date d'un document est vide  
+	- Calcul de la date du document si elle n'est pas fournie par les données métier
+	- Suppression des TechnicalException en cas de format de date incorrect
+	- Modification libellé d'erreur sur les dates extrêmes
+	- Pas d'exécution de getTag en passe 1 (retour chaîne vide)
+	- Vidage du fichier de traces dans le cas où il n'y a pas d'erreurs
+	- Récupération de la taille des documents dans les données métier si elle est fournie
+	- Calcul de la taille des documents des unités documentaires en SEDA 0.2
+	- Correction bug sur récupération du schemeID des FilePlanPosition
+	- Suppression du déclenchement de RuntimException pour les balises Duration, Receipt, ...
+	- Calcul des dates extrêmes dans les unités documentaires (l'ancien calcul concernait l'archive)
+	- Génération de la balise TransferringAgencyObjectIdentifier et TransferringAgencyArchiveIdentifier
+	- CsvArchiveDocuments.isThereDocumentsReferringToType : ajout de la vérification d'existence dans les données métiers d'un document avec le relativeContext du noeud courant, et non plus seulement la dernière partie du contexte.
+	- SedaSummaryRngGenerator.doContains : adaptation de l'appel de la méthode CsvArchiveDocuments.isThereDocumentsReferringToType

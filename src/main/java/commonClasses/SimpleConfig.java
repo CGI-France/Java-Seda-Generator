@@ -21,9 +21,11 @@ public class SimpleConfig {
 
 	private static final String BEGINNING_CAR = "#";
 	private static final String SECTION_GENERATOR = "generator";
-	private static final String SECTION_GENERATOR_AUTHORIZED_FILES = "trace|accord|data|rep_documents|baseURI|bordereau";
+	private static final String SECTION_GENERATOR_AUTHORIZED_KEYS = "trace|accord|data|rep_documents|baseURI|bordereau";
 	private static final String SECTION_ACCORD_VERSEMENT = "accord-versement";
-	private static final String SECTION_ACCORD_VERSEMENT_AUTHORIZED_FILES = "SAE_Serveur|TransferIdPrefix|SAE_ProfilArchivage|TransferringAgencyId|TransferringAgencyName|TransferringAgencyDesc|ArchivalAgencyId|ArchivalAgencyName|ArchivalAgencyDesc";
+	private static final String SECTION_ACCORD_VERSEMENT_AUTHORIZED_KEYS = "SAE_Serveur|TransferIdPrefix|SAE_ProfilArchivage|TransferringAgencyId|TransferringAgencyName|TransferringAgencyDesc|ArchivalAgencyId|ArchivalAgencyName|ArchivalAgencyDesc";
+	private static final String SECTION_PROFILE = "profile-control";
+	private static final String SECTION_DATA = "data-control";
 	private static final String AUTHORIZED_FILES_REGEX_BEGIN = "^\\s*(";
 	// private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(([a-zA-Z0-9]|_|-|:|\\.|/)+)\\s*$";
 	private static final String AUTHORIZED_FILES_REGEX_END = ")\\s*=\\s*(.*)\\s*$";
@@ -94,12 +96,19 @@ public class SimpleConfig {
 	 * @return
 	 */
 	public GeneratorConfig getGeneratorConfig(String configName) {
-		GeneratorConfig config = null;
-		for (GeneratorConfig c : generatorList) {
-			if (StringUtils.isEmpty(configName) || c.getNomJob().equals(configName)) {
-				config = c;
-				break;
-			}
+		// On recherche la section default si aucune section n'est précisée 
+		if (StringUtils.isEmpty(configName))
+			configName = "default";
+	 		GeneratorConfig config = null;
+	 		for (GeneratorConfig c : generatorList) {
+			if (c.getNomJob().equals(configName)) {
+ 				config = c;
+ 				break;
+ 			}
+ 		}
+		// Si la section default n'a pas été trouvée, on retourne la première section
+		if (config == null && configName.equals("default") && generatorList.size() >= 1) {
+				config = generatorList.get(0);
 		}
 		return config;
 	}
@@ -108,19 +117,18 @@ public class SimpleConfig {
 		if (inSection) {
 			switch (section) {
 			case SECTION_ACCORD_VERSEMENT:
-				AccordVersementConfig paccord = new AccordVersementConfig();
-				paccord.setAccordVersement(sectionName);
-				paccord.setSaeServeur(saeServeur);
-				;
-				paccord.setTransferIdPrefix(transferIdPrefix);
-				paccord.setSaeProfilArchivage(saeProfilArchivage);
-				paccord.setTransferringAgencyId(transferringAgencyId);
-				paccord.setTransferringAgencyName(transferringAgencyName);
-				paccord.setTransferringAgencyDesc(transferringAgencyDesc);
-				paccord.setArchivalAgencyId(archivalAgencyId);
-				paccord.setArchivalAgencyName(archivalAgencyName);
-				paccord.setArchivalAgencyDesc(archivalAgencyDesc);
-				accordVersementConfigList.add(paccord);
+				AccordVersementConfig accord = new AccordVersementConfig();
+				accord.setAccordVersement(sectionName);
+				accord.setSaeServeur(saeServeur);
+				accord.setTransferIdPrefix(transferIdPrefix);
+				accord.setSaeProfilArchivage(saeProfilArchivage);
+				accord.setTransferringAgencyId(transferringAgencyId);
+				accord.setTransferringAgencyName(transferringAgencyName);
+				accord.setTransferringAgencyDesc(transferringAgencyDesc);
+				accord.setArchivalAgencyId(archivalAgencyId);
+				accord.setArchivalAgencyName(archivalAgencyName);
+				accord.setArchivalAgencyDesc(archivalAgencyDesc);
+				accordVersementConfigList.add(accord);
 				break;
 			case SECTION_GENERATOR:
 				GeneratorConfig generator = new GeneratorConfig();
@@ -176,14 +184,17 @@ public class SimpleConfig {
 							authorizedKeys = StringUtils.EMPTY;
 							inSection = true;
 							if (SECTION_GENERATOR.equals(section)) {
-								authorizedKeys = SECTION_GENERATOR_AUTHORIZED_FILES;
+								authorizedKeys = SECTION_GENERATOR_AUTHORIZED_KEYS;
 							} else if (SECTION_ACCORD_VERSEMENT.equals(section)) {
-								authorizedKeys = SECTION_ACCORD_VERSEMENT_AUTHORIZED_FILES;
+								authorizedKeys = SECTION_ACCORD_VERSEMENT_AUTHORIZED_KEYS;
 							} else {
-								errMsg = new StringBuilder().append(ERROR_CONFIG_SECTION_1).append(section)
-										.append(ERROR_CONFIG_SECTION_2).toString();
-								TRACESWRITER.error(errMsg);
-								errorsList.add(errMsg);
+								// TODO: sections ├á traiter lorsque le code C# sera port├® en Java 
+								if (! SECTION_PROFILE.equals(section) && ! SECTION_DATA.equals(section)) {
+									errMsg = new StringBuilder().append(ERROR_CONFIG_SECTION_1).append(section)
+											.append(ERROR_CONFIG_SECTION_2).toString();
+									TRACESWRITER.error(errMsg);
+									errorsList.add(errMsg);
+								}
 								inSection = false;
 							}
 							if (inSection) {
