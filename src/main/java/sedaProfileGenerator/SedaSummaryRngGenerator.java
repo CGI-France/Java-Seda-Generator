@@ -1217,7 +1217,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				String balise = context.substring(posLastSlash, context.length());
 				dataString = archiveDocuments.getKeyValue(KEY_ORIGINATINGAGENCY + KEY_TAG_SEPARATOR + balise);
 				break;
-			case "/ArchiveTransfer/Archive/ContentDescription/CustodialHistory": // SEDA 1.0
+			case "/ArchiveTransfer/Archive/ContentDescription/CustodialHistory/CustodialHistoryItem": // SEDA 1.0
 			case "/ArchiveTransfer/Contains/ContentDescription/CustodialHistory": // SEDA 0.2
 				dataString = archiveDocuments.getKeyValue(KEY_CUSTODIALHISTORY);
 				break;

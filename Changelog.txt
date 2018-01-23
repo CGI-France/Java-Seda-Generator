@@ -27,3 +27,6 @@ v1.1.1 :
 	- Génération de la balise TransferringAgencyObjectIdentifier et TransferringAgencyArchiveIdentifier
 	- CsvArchiveDocuments.isThereDocumentsReferringToType : ajout de la vérification d'existence dans les données métiers d'un document avec le relativeContext du noeud courant, et non plus seulement la dernière partie du contexte.
 	- SedaSummaryRngGenerator.doContains : adaptation de l'appel de la méthode CsvArchiveDocuments.isThereDocumentsReferringToType
+
+v1.1.2 :
+	- SedaSummaryRngGenerator : Correction CustodialHistoryItem en SEDA v1.0.
