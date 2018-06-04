@@ -206,6 +206,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private int currentPass;
 	private ContainsNode rootContainsNode;
 	private ContainsNode currentContainsNode;
+	private String lastGenDocumentParentDocumentIdentifier = null;
+	private String lastGenDocumentContext = null;
 
 	// Le premier nœud Contains doit être généré indépendamment du fait qu'il y ait ou pas des documents. Ce premier
 	// nœud ne contient pas de balise ArchivalAgencyObjectIdentifier et doit être traité de façon exceptionnelle.
@@ -1022,6 +1024,35 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		if (NOEUD_DOCUMENT.equals(tagToWrite)) {
 			if (currentDocumentTypeId != null) {
 				String typeId = currentContainsNode.getRelativeContext();
+				
+				// SEDA 1.0 : les documents à la racine d'une unité documentaire sont placés après ses unités documentaires filles. 
+				if("1.0".equals(SEDA_version) && currentPass == 2) {
+					boolean keepLastGenDocInfos = true;
+					if(currentContainsNode.getObjectIdentifier().equals(lastGenDocumentParentDocumentIdentifier))  {
+						ContainsNode docParent = currentContainsNode.getParent();
+						int levelDiff = StringUtils.countMatches(lastGenDocumentContext, NOEUD_ARCHIVE_OBJECT) - StringUtils.countMatches(context, NOEUD_ARCHIVE_OBJECT);
+						if (levelDiff > 1) {
+							for(int i = levelDiff; i > 1 ; i--) {
+								if(docParent != null) {
+									docParent = docParent.getParent();
+								}
+							}
+						}
+						
+						if(context != null && !context.equals(lastGenDocumentContext)
+								&& docParent != null
+								&& docParent.getChildrenNbDocuments() > 0) {
+							typeId = docParent.getRelativeContext();
+							keepLastGenDocInfos = false;
+						}
+					}
+					
+					if(keepLastGenDocInfos) {
+						lastGenDocumentParentDocumentIdentifier = currentContainsNode.getObjectIdentifier();
+						lastGenDocumentContext = context;
+					}
+				}
+				
 				String documentIdentification = lookupForDocumentIdentification(elemNode);
 				boolean withDocumentIdentification = StringUtils.isNotEmpty(documentIdentification);
 				if (withDocumentIdentification) {

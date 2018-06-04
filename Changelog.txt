@@ -30,3 +30,6 @@ v1.1.1 :
 
 v1.1.2 :
 	- SedaSummaryRngGenerator : Correction CustodialHistoryItem en SEDA v1.0.
+	
+v1.1.3 :
+	- Imbrication de documents et unités documentaires dans une même unité documentaire en SEDA v1.0.

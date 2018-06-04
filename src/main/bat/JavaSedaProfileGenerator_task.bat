@@ -20,7 +20,7 @@ SET SLF4J_LIB=lib/slf4j-api-1.7.12.jar
 SET XALAN_LIB=lib/xalan-2.7.1.jar
 SET XMLAPIS_LIB=lib/xml-apis-1.3.04.jar
 SET COMMONS_LANG_LIB=lib/commons-lang-2.3.jar
-SET JAVASEDAPROFILEGENERATOR=lib/JavaSedaProfileGenerator-1.1.2.jar
+SET JAVASEDAPROFILEGENERATOR=lib/JavaSedaProfileGenerator-1.1.3.jar
 
 SET JAVA_BIN=java
 

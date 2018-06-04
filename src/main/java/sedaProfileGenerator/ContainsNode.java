@@ -37,7 +37,7 @@ public class ContainsNode {
 								// si cette condition n'est pas remplie, une
 								// alerte doit être levée
 	private String objectIdentifier;
-	private ArrayList<ContainsNode> childrens = new ArrayList<ContainsNode>();;
+	private ArrayList<ContainsNode> childrens = new ArrayList<ContainsNode>();
 	private ContainsNode parent;
 
 	/**
@@ -194,6 +194,18 @@ public class ContainsNode {
 			nbDocuments += node.computeNbDocuments();
 		}
 		return nbDocuments;
+	}
+	
+	/**
+	 * Cette méthode retourne le nombre de documents contenus dans les contains enfants du noeud.
+	 * @return nombre de documents dans les contains enfants du noeud
+	 */
+	public int getChildrenNbDocuments() {
+		int childrenNbDocs = 0;
+		for (ContainsNode node : childrens) {
+			childrenNbDocs += node.computeNbDocuments();
+		}
+		return childrenNbDocs;
 	}
 
 	/**

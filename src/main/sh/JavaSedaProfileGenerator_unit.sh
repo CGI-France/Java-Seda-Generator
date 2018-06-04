@@ -45,7 +45,7 @@ STRINGTEMPLATE_LIB=lib/stringtemplate-3.2.1.jar
 WOODSTOX_LIB=lib/woodstox-core-asl-4.4.0.jar
 XALAN_LIB=lib/xalan-2.7.1.jar
 XMLAPIS_LIB=lib/xml-apis-1.3.04.jar
-JAVASEDAPROFILEGENERATOR=lib/JavaSedaProfileGenerator-1.1.2.jar
+JAVASEDAPROFILEGENERATOR=lib/JavaSedaProfileGenerator-1.1.3.jar
 
 JAVA_BIN=java
 
