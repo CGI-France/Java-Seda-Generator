@@ -133,7 +133,6 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String KEY_FILEPLANPOSITION = "FilePlanPosition";
 	private static final String KEY_ORIGINATINGAGENCY = "OriginatingAgency";
 	private static final String KEY_KEYWORDCONTENT = "KeywordContent";
-	private static final String KEY_CONTAINSNAME = "ContainsName";
 	private static final String KEY_CONTAINS = "Contains";
 	private static final String KEY_NAME = "Name";
 	private static final String KEY_TAG_SEPARATOR = ".";
@@ -207,6 +206,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private int currentPass;
 	private ContainsNode rootContainsNode;
 	private ContainsNode currentContainsNode;
+	private String lastGenDocumentParentDocumentIdentifier = null;
+	private String lastGenDocumentContext = null;
 
 	// Le premier nœud Contains doit être généré indépendamment du fait qu'il y ait ou pas des documents. Ce premier
 	// nœud ne contient pas de balise ArchivalAgencyObjectIdentifier et doit être traité de façon exceptionnelle.
@@ -579,11 +580,20 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			TRACESWRITER.trace("currentDocumentTypeId à répétition : " + currentDocumentTypeId);
 		}
 		bGenererElement.setValue(1);
-		if (boucleTags.getValue())
-			if (archiveDocuments.isThereDocumentsReferringToType(currentDocumentTypeId) == false) {
+		if (boucleTags.getValue()) {
+			boolean isThereDocumentsReferringToCurrentType = false;
+			if (currentPass == 1) {
+				isThereDocumentsReferringToCurrentType = archiveDocuments.isThereDocumentsReferringToType(
+						currentDocumentTypeId, currentContainsNode);
+			} else if (currentPass == 2) {
+				isThereDocumentsReferringToCurrentType = archiveDocuments.isThereDocumentsReferringToType(
+						currentDocumentTypeId, currentContainsNode.next());
+			}
+			if (isThereDocumentsReferringToCurrentType == false) {
 				bGenererElement.setValue(0);
 				boucleTags.setValue(false);
 			}
+		}
 		if (currentPass == 2) {
 			if (bGenererElement.getValue() > 0 && currentContainsNode != null) {
 				if (ROOT.equals(currentDocumentTypeId)) {
@@ -611,10 +621,12 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				}
 				int nbDocs = archiveDocuments.prepareListForType(currentContainsNode.getRelativeContext(), false);
 				currentContainsNode.incNbDocs(nbDocs);
-				archiveDocuments.computeDates();
-				currentContainsNode.setDates(archiveDocuments.getOldestDate(), archiveDocuments.getLatestDate());
-				TRACESWRITER.debug("Dates of '" + currentDocumentTypeId + "' are '" + archiveDocuments.getOldestDate() + "' to '"
-						+ archiveDocuments.getLatestDate() + "'");
+				archiveDocuments.computeDates(currentContainsNode.getRelativeContext());
+				currentContainsNode.setDates(
+						archiveDocuments.getOldestDate(currentContainsNode.getRelativeContext())
+						, archiveDocuments.getLatestDate(currentContainsNode.getRelativeContext()));
+				/*TRACESWRITER.debug("Dates of '" + currentDocumentTypeId + "' are '" + archiveDocuments.getOldestDate() + "' to '"
+						+ archiveDocuments.getLatestDate() + "'");*/
 			}
 		}
 	}
@@ -1020,6 +1032,35 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		if (NOEUD_DOCUMENT.equals(tagToWrite)) {
 			if (currentDocumentTypeId != null) {
 				String typeId = currentContainsNode.getRelativeContext();
+				
+				// SEDA 1.0 : les documents à la racine d'une unité documentaire sont placés après ses unités documentaires filles. 
+				if("1.0".equals(SEDA_version) && currentPass == 2) {
+					boolean keepLastGenDocInfos = true;
+					if(currentContainsNode.getObjectIdentifier().equals(lastGenDocumentParentDocumentIdentifier))  {
+						ContainsNode docParent = currentContainsNode.getParent();
+						int levelDiff = StringUtils.countMatches(lastGenDocumentContext, NOEUD_ARCHIVE_OBJECT) - StringUtils.countMatches(context, NOEUD_ARCHIVE_OBJECT);
+						if (levelDiff > 1) {
+							for(int i = levelDiff; i > 1 ; i--) {
+								if(docParent != null) {
+									docParent = docParent.getParent();
+								}
+							}
+						}
+						
+						if(context != null && !context.equals(lastGenDocumentContext)
+								&& docParent != null
+								&& docParent.getChildrenNbDocuments() > 0) {
+							typeId = docParent.getRelativeContext();
+							keepLastGenDocInfos = false;
+						}
+					}
+					
+					if(keepLastGenDocInfos) {
+						lastGenDocumentParentDocumentIdentifier = currentContainsNode.getObjectIdentifier();
+						lastGenDocumentContext = context;
+					}
+				}
+				
 				String documentIdentification = lookupForDocumentIdentification(elemNode);
 				boolean withDocumentIdentification = StringUtils.isNotEmpty(documentIdentification);
 				if (withDocumentIdentification) {
@@ -1215,7 +1256,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				String balise = context.substring(posLastSlash, context.length());
 				dataString = archiveDocuments.getKeyValue(KEY_ORIGINATINGAGENCY + KEY_TAG_SEPARATOR + balise);
 				break;
-			case "/ArchiveTransfer/Archive/ContentDescription/CustodialHistory": // SEDA 1.0
+			case "/ArchiveTransfer/Archive/ContentDescription/CustodialHistory/CustodialHistoryItem": // SEDA 1.0
 			case "/ArchiveTransfer/Contains/ContentDescription/CustodialHistory": // SEDA 0.2
 				dataString = archiveDocuments.getKeyValue(KEY_CUSTODIALHISTORY);
 				break;
@@ -1271,8 +1312,9 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 																	// 1.0
 						|| context.endsWith("/Contains/Contains/Name")) { // SEDA
 																			// .02
-					dataString = archiveDocuments.getKeyValue(KEY_CONTAINSNAME + CsvArchiveDocuments.BEGINNING_TAG_CAR
-							+ currentContainsNode.getRelativeContext() + CsvArchiveDocuments.END_TAG_CAR);
+					dataString = archiveDocuments.getKeyValue(KEY_CONTAINS + KEY_NAME
+							+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
+							+ CsvArchiveDocuments.END_TAG_CAR);
 				} else if (context.endsWith("/ArchiveObject/ArchivalAgencyObjectIdentifier") // SEDA
 																								// 1.0
 						|| context.endsWith("/Contains/ArchivalAgencyObjectIdentifier") // SEDA
@@ -1528,7 +1570,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			break;
 
 		case TAG_OLDESTDATE:
-			dateStringIn = currentContainsNode.getOldestDate();
+			dateStringIn = archiveDocuments.getOldestDate(currentContainsNode.getRelativeContext());
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));
@@ -1549,7 +1591,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		case TAG_STARTDATE:
 
 		case TAG_LATESTDATE:
-			dateStringIn = currentContainsNode.getLatestDate();
+			dateStringIn = archiveDocuments.getLatestDate(currentContainsNode.getRelativeContext());
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));

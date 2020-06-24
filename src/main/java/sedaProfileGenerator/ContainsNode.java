@@ -39,7 +39,7 @@ public class ContainsNode {
 								// si cette condition n'est pas remplie, une
 								// alerte doit être levée
 	private String objectIdentifier;
-	private ArrayList<ContainsNode> childrens = new ArrayList<ContainsNode>();;
+	private ArrayList<ContainsNode> childrens = new ArrayList<ContainsNode>();
 	private ContainsNode parent;
 
 	private String oldestDate = null;
@@ -237,6 +237,18 @@ public class ContainsNode {
 		}
 		return nbDocuments;
 	}
+	
+	/**
+	 * Cette méthode retourne le nombre de documents contenus dans les contains enfants du noeud.
+	 * @return nombre de documents dans les contains enfants du noeud
+	 */
+	public int getChildrenNbDocuments() {
+		int childrenNbDocs = 0;
+		for (ContainsNode node : childrens) {
+			childrenNbDocs += node.computeNbDocuments();
+		}
+		return childrenNbDocs;
+	}
 
 	/**
 	 * Cette méthode retourne le nombre de documents du nœud
@@ -255,4 +267,13 @@ public class ContainsNode {
 	public ArrayList<ContainsNode> getChildrens() {
 		return childrens;
 	}
+
+	public String getObjectIdentifier() {
+		return objectIdentifier;
+	}
+
+	public void setObjectIdentifier(String objectIdentifier) {
+		this.objectIdentifier = objectIdentifier;
+	}
+
 }

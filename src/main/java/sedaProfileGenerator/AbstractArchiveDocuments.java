@@ -21,7 +21,7 @@ public abstract class AbstractArchiveDocuments {
 	/**
 	 * Retourne le nombre de documents référençant le type docListType
 	 */
-	abstract public boolean isThereDocumentsReferringToType(String docListType);
+	abstract public boolean isThereDocumentsReferringToType(String docListType, ContainsNode currentContainsNode);
 
 	/**
 	 * Prépare une liste de documents qui sont identifiés comme docListType retourne le nombre de documents
@@ -81,19 +81,19 @@ public abstract class AbstractArchiveDocuments {
 	abstract public String getDocumentSize();
 
 	/**
-	 * Calcule les dates extrêmes pour la liste de documents courante
+	 * Calcule les dates extrêmes pour une unité documentaire
 	 */
-	abstract public void computeDates() throws TechnicalException;
+	abstract public void computeDates(String archiveObjectIdentifier) throws TechnicalException;
 	
 	/**
 	 * Donne la date la plus récente calculée par computeDates
 	 */
-	abstract public String getLatestDate();
+	abstract public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException;
 
 	/**
 	 * Donne la date la plus ancienne calculée par computeDates
 	 */
-	abstract public String getOldestDate();
+	abstract public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException;
 
 	/**
 	 * Donne la valeur de la clé

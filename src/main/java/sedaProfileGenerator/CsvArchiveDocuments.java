@@ -47,6 +47,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	private Enumeration<String[]> partialDocumentsListEnumerator;
 	private String[] currentPartialDocument = null;
 	private String partialDocumentsListCurrentDocType = null;
+	private String currentArchiveObjectIdentifier = null;
 	private String lastError;
 
 	private String oldestDate = null;
@@ -228,7 +229,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#isThereDocumentsReferringToType(java.lang.String)
 	 */
 	@Override
-	public boolean isThereDocumentsReferringToType(String docListType) {
+	public boolean isThereDocumentsReferringToType(String docListType, ContainsNode currentContainsNode) {
 
 		TRACESWRITER.trace(TRACE_BEGIN_IS_THERE_DOCUMENTS_REFERRING_TO_TYPE_1 + docListType
 				+ TRACE_BEGIN_IS_THERE_DOCUMENTS_REFERRING_TO_TYPE_2);
@@ -240,7 +241,10 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 				for (int j = 0; j < split.length; j++) {
 					String part = split[j];
 					if (getTagWithoutDocumentIdentification(part).equals(docListType)) {
-						atLeastOne = true;
+						if (elements[TYPE_LOCATION].contains(currentContainsNode.getRelativeContext())
+								|| currentContainsNode.getObjectIdentifier().equals("root")) {
+							atLeastOne = true;
+						}
 						break;
 					}
 				}
@@ -516,13 +520,13 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	}
 
 	/**
-	 * Calcule les dates extrêmes pour la liste de documents courante
+	 * Calcule les dates extrêmes pour une unité documentaire
 	 *
 	 */
 	@Override
-	public void computeDates() throws TechnicalException {
+	public void computeDates(String archiveObjectIdentifier) throws TechnicalException {
 
-		TRACESWRITER.trace("computeDates () through " + partialDocumentsList.size() + " documents");
+		TRACESWRITER.trace("computeDates (" + archiveObjectIdentifier + ") through " + documentsList.size() + " documents");
 
 		oldestDate = DEFAULT_OLDEST_DATE;
 		latestDate = DEFAULT_LATEST_DATE;
@@ -538,32 +542,36 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 		knownPatterns.add(DATE_PATTERN_1);
 		knownPatterns.add(DATE_PATTERN_4);
 		int nbMatchingDocs = 0;
-		for (int i = 0; i < partialDocumentsList.size(); i++) {
-			elements = partialDocumentsList.get(i);
-			if (elements.length > DATE_LOCATION) {
-				dateString = elements[DATE_LOCATION];
-				for (String patternString : knownPatterns) {
-					try {
-						Date oldest = sdfDefault.parse(oldestDate);
-						Date latest = sdfDefault.parse(latestDate);
-						pattern = new SimpleDateFormat(patternString);
-						date = pattern.parse(dateString);
-						if (date.before(oldest))
-							oldestDate = sdfDefault.format(date);
-						if (date.after(latest))
-							latestDate = sdfDefault.format(date);
-						break;
-					} catch (ParseException pe) {
-					} // On essaie plusieurs patterns
-				}
-			} else {
-				if (elements.length > FILENAME_LOCATION && !StringUtils.isEmpty(elements[FILENAME_LOCATION])) {
-					throw new TechnicalException(ERROR_COMPUTE_DATES_DOC_IDENTIFIED + elements[FILENAME_LOCATION]);
+		for (int i = 0; i < documentsList.size(); i++) {
+			elements = documentsList.get(i);
+			if (elementMatchesDocumentIdentifier(elements[TYPE_LOCATION], archiveObjectIdentifier)) {
+				++nbMatchingDocs;
+				if (elements.length > DATE_LOCATION) {
+					dateString = elements[DATE_LOCATION];
+					for (String patternString : knownPatterns) {
+						try {
+							Date oldest = sdfDefault.parse(oldestDate);
+							Date latest = sdfDefault.parse(latestDate);
+							pattern = new SimpleDateFormat(patternString);
+							date = pattern.parse(dateString);
+							if (date.before(oldest))
+								oldestDate = sdfDefault.format(date);
+							if (date.after(latest))
+								latestDate = sdfDefault.format(date);
+							break;
+						} catch (ParseException pe) {
+						} // On essaie plusieurs patterns
+					}
 				} else {
-					throw new TechnicalException(ERROR_COMPUTE_DATES);
+					if (elements.length > FILENAME_LOCATION && !StringUtils.isEmpty(elements[FILENAME_LOCATION])) {
+						throw new TechnicalException(ERROR_COMPUTE_DATES_DOC_IDENTIFIED + elements[FILENAME_LOCATION]);
+					} else {
+						throw new TechnicalException(ERROR_COMPUTE_DATES);
+					}
 				}
 			}
 		}
+		currentArchiveObjectIdentifier = archiveObjectIdentifier;
 		TRACESWRITER.trace("OldestDate = '" + oldestDate + "' latestDate = '" + latestDate + "' nbMatchingDocs '" + nbMatchingDocs + "'");
 
 	}
@@ -575,7 +583,10 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getLatestDate()
 	 */
 	@Override
-	public String getLatestDate() {
+	public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException {
+
+		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
+			computeDates(archiveObjectIdentifier);
 		return latestDate;
 
 	}
@@ -587,7 +598,10 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getOldestDate()
 	 */
 	@Override
-	public String getOldestDate() {
+	public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException {
+
+		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
+			computeDates(archiveObjectIdentifier);
 		return oldestDate;
 
 	}
