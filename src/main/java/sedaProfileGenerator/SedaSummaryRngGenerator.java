@@ -132,6 +132,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	private static final String KEY_DESCRIPTION = "Description";
 	private static final String KEY_FILEPLANPOSITION = "FilePlanPosition";
 	private static final String KEY_ORIGINATINGAGENCY = "OriginatingAgency";
+	private static final String KEY_APPRAISAL = "Appraisal";
+	private static final String KEY_ACCESSRESTRICTION = "AccessRestriction";
 	private static final String KEY_KEYWORDCONTENT = "KeywordContent";
 	private static final String KEY_CONTAINS = "Contains";
 	private static final String KEY_NAME = "Name";
@@ -1191,7 +1193,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 	 * contexte
 	 */
 	private String getData(String context, Node node) throws TechnicalException {
-
+		int posLastSlash;
+		String balise;
 		String dataString = null;
 		if (currentPass == 1) {
 			dataString = "";
@@ -1224,12 +1227,18 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				break;
 			case "/ArchiveTransfer/TransferringAgency/Description":
 				dataString = sae.getTransferringAgencyDesc();
+				if (dataString.contentEquals(""))
+					dataString = archiveDocuments.getKeyValue("TransferringAgency.Description");
 				break;
 			case "/ArchiveTransfer/TransferringAgency/Identification":
 				dataString = sae.getTransferringAgencyId();
+				if (dataString.contentEquals(""))
+					dataString = archiveDocuments.getKeyValue("TransferringAgency.Identification");
 				break;
 			case "/ArchiveTransfer/TransferringAgency/Name":
 				dataString = sae.getTransferringAgencyName();
+				if (dataString.contentEquals(""))
+					dataString = archiveDocuments.getKeyValue("TransferringAgency.Name");
 				break;
 			case "/ArchiveTransfer/ArchivalAgency/Description":
 				dataString = sae.getArchivalAgencyDesc();
@@ -1240,8 +1249,18 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			case "/ArchiveTransfer/ArchivalAgency/Name":
 				dataString = sae.getArchivalAgencyName();
 				break;
-			case "/ArchiveTransfer/Archive/ContentDescription/OriginatingAgency/BusinessType": // SEDA
-																								// 1.0
+			case "/ArchiveTransfer/Archive/AppraisalRule/Code": // SEDA 1.0
+			case "/ArchiveTransfer/Contains/Appraisal/Code": // SEDA 0.2
+				posLastSlash = context.lastIndexOf('/') + 1;
+				balise = context.substring(posLastSlash, context.length());
+				dataString = archiveDocuments.getKeyValue(KEY_APPRAISAL + KEY_TAG_SEPARATOR + balise);
+				break;
+			case "/ArchiveTransfer/Archive/AccessRestrictionRule/Code": // SEDA 1.0
+			case "/ArchiveTransfer/Contains/AccessRestriction/Code": // SEDA 0.2
+				posLastSlash = context.lastIndexOf('/') + 1;
+				balise = context.substring(posLastSlash, context.length());
+				dataString = archiveDocuments.getKeyValue(KEY_ACCESSRESTRICTION + KEY_TAG_SEPARATOR + balise);
+				break;
 			case "/ArchiveTransfer/Archive/ContentDescription/OriginatingAgency/Identification":
 			case "/ArchiveTransfer/Archive/ContentDescription/OriginatingAgency/Description":
 			case "/ArchiveTransfer/Archive/ContentDescription/OriginatingAgency/LegalClassification":
@@ -1252,8 +1271,8 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			case "/ArchiveTransfer/Contains/ContentDescription/OriginatingAgency/Description":
 			case "/ArchiveTransfer/Contains/ContentDescription/OriginatingAgency/LegalClassification":
 			case "/ArchiveTransfer/Contains/ContentDescription/OriginatingAgency/Name":
-				int posLastSlash = context.lastIndexOf('/') + 1;
-				String balise = context.substring(posLastSlash, context.length());
+				posLastSlash = context.lastIndexOf('/') + 1;
+				balise = context.substring(posLastSlash, context.length());
 				dataString = archiveDocuments.getKeyValue(KEY_ORIGINATINGAGENCY + KEY_TAG_SEPARATOR + balise);
 				break;
 			case "/ArchiveTransfer/Archive/ContentDescription/CustodialHistory/CustodialHistoryItem": // SEDA 1.0
@@ -1308,11 +1327,19 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 					dataString = convertUnit(sizeOfDocuments, node);
 				} else if (context.endsWith("/Document/Description")) {
 					dataString = archiveDocuments.getName();
-				} else if (context.endsWith("/ArchiveObject/Name") // SEDA
-																	// 1.0
-						|| context.endsWith("/Contains/Contains/Name")) { // SEDA
-																			// .02
+				} else if (context.endsWith("/ArchiveObject/Name") // SEDA 1.0
+						|| context.endsWith("/Contains/Contains/Name")) { // SEDA 0.2
 					dataString = archiveDocuments.getKeyValue(KEY_CONTAINS + KEY_NAME
+							+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
+							+ CsvArchiveDocuments.END_TAG_CAR);
+				} else if (context.endsWith("/ArchiveObject/AppraisalRule/Code") // SEDA 1.0
+						|| context.endsWith("/Contains/Appraisal/Code")) { // SEDA 0.2
+					dataString = archiveDocuments.getKeyValue("Appraisal.Code"
+							+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
+							+ CsvArchiveDocuments.END_TAG_CAR);
+				} else if (context.endsWith("/ArchiveObject/AccessRestrictionRule/Code") // SEDA 1.0
+						|| context.endsWith("/Contains/AccessRestriction/Code")) { // SEDA 0.2
+					dataString = archiveDocuments.getKeyValue("AccessRestriction.Code"
 							+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
 							+ CsvArchiveDocuments.END_TAG_CAR);
 				} else if (context.endsWith("/ArchiveObject/ArchivalAgencyObjectIdentifier") // SEDA
@@ -1538,7 +1565,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			return "TODO: Issue";
 
 		case TAG_DURATION:
-			return "TODO: Duration";
+			if (context.contentEquals("/ArchiveTransfer/Archive/AppraisalRule") // SEDA 1.0
+				|| context.contentEquals("/ArchiveTransfer/Contains/Appraisal")) // SEDA 0.2
+				return archiveDocuments.getKeyValue(KEY_APPRAISAL + KEY_TAG_SEPARATOR + "Duration");
+			else
+				return archiveDocuments.getKeyValue("Appraisal.Duration"
+						+ CsvArchiveDocuments.BEGINNING_TAG_CAR + currentContainsNode.getRelativeContext()
+						+ CsvArchiveDocuments.END_TAG_CAR);
 
 		case TAG_CREATION:
 			dateStringIn = archiveDocuments.getDocumentDate();
