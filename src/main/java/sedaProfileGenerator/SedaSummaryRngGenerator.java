@@ -1367,7 +1367,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 								+ CsvArchiveDocuments.END_TYPE_CAR + CsvArchiveDocuments.END_TAG_CAR);
 					}
 
-				} else if (context.endsWith("ArchiveObject/ContentDescription/CustodialHistory") // SEDA
+				} else if (context.endsWith("ArchiveObject/ContentDescription/CustodialHistory/CustodialHistoryItem") // SEDA
 						// 1.0
 						|| context.endsWith("Contains/ContentDescription/CustodialHistory")) { // SEDA
 					// 0.2
