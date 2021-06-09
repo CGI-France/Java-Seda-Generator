@@ -241,10 +241,13 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 				for (int j = 0; j < split.length; j++) {
 					String part = split[j];
 					if (getTagWithoutDocumentIdentification(part).equals(docListType)) {
+						/* ATTENTION CORRECTION 2021-06-09 DATES EXTRÊMES 
 						if (elements[TYPE_LOCATION].contains(currentContainsNode.getRelativeContext())
 								|| currentContainsNode.getObjectIdentifier().equals("root")) {
 							atLeastOne = true;
 						}
+						*/
+						atLeastOne = true;
 						break;
 					}
 				}
@@ -496,15 +499,23 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 
 	}
 	
-	private boolean elementMatchesDocumentIdentifier(String elementType, String archiveObjectIdentifier) {
+	private boolean elementMatchesDocumentIdentifier(String elementType, ContainsNode node) {
 		// On enlève progressivement de elementType les parties d'identifiant jusqu'à trouver une correspondance
-		// On ne traite pas les documents (par ex :  NODE1//NODE2[#3]//NODE4{DOC}
-		// Ex : NODE1//NODE2[#3]//NODE4
+		// On ne traite pas les documents (par ex :  NODE1/NODE2[#3]/NODE4{DOC}
+		// Ex : NODE1/NODE2[#3]/NODE4
 		// se décompose en :
-		// NODE1//NODE2[#3]//NODE4
-		// NODE1//NODE2[#3]
+		// NODE1/NODE2[#3]/NODE4
+		// NODE1/NODE2[#3]
 		// NODE1
 		// "root" correspond à tous les documents
+		String archiveObjectIdentifier = node.getRelativeContext();
+		
+		// On retire les indicateurs de documents de elementType
+		int indexDocument = elementType.lastIndexOf("{");
+		if (indexDocument != -1)
+			elementType = elementType.substring(0, indexDocument);
+		
+		TRACESWRITER.trace("elementMatchesDocumentIdentifier (" + elementType + ", " + archiveObjectIdentifier + ")");
 		if (archiveObjectIdentifier.equals("root"))
 			return true;
 		int indexSeparator = 0;
@@ -514,6 +525,9 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 			indexSeparator = elementType.lastIndexOf("//");
 			if (indexSeparator != -1)
 				elementType = elementType.substring(0, indexSeparator);
+			else
+				if (node.hasChildWithObjectIdentifier(elementType))
+					return true;
 		}
 
 		return false;
@@ -524,7 +538,8 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 *
 	 */
 	@Override
-	public void computeDates(String archiveObjectIdentifier) throws TechnicalException {
+	public void computeDates(ContainsNode node) throws TechnicalException {
+		String archiveObjectIdentifier = node.getRelativeContext();
 
 		TRACESWRITER.trace("computeDates (" + archiveObjectIdentifier + ") through " + documentsList.size() + " documents");
 
@@ -544,7 +559,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 		int nbMatchingDocs = 0;
 		for (int i = 0; i < documentsList.size(); i++) {
 			elements = documentsList.get(i);
-			if (elementMatchesDocumentIdentifier(elements[TYPE_LOCATION], archiveObjectIdentifier)) {
+			if (elementMatchesDocumentIdentifier(elements[TYPE_LOCATION], node)) {
 				++nbMatchingDocs;
 				if (elements.length > DATE_LOCATION) {
 					dateString = elements[DATE_LOCATION];
@@ -572,7 +587,7 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 			}
 		}
 		currentArchiveObjectIdentifier = archiveObjectIdentifier;
-		TRACESWRITER.trace("OldestDate = '" + oldestDate + "' latestDate = '" + latestDate + "' nbMatchingDocs '" + nbMatchingDocs + "'");
+		TRACESWRITER.debug("OldestDate = '" + oldestDate + "' latestDate = '" + latestDate + "' nbMatchingDocs '" + nbMatchingDocs + "'");
 
 	}
 
@@ -583,10 +598,11 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getLatestDate()
 	 */
 	@Override
-	public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException {
+	public String getLatestDate(ContainsNode node) throws TechnicalException {
+		String archiveObjectIdentifier = node.getRelativeContext();
 
 		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
-			computeDates(archiveObjectIdentifier);
+			computeDates(node);
 		return latestDate;
 
 	}
@@ -598,10 +614,11 @@ public class CsvArchiveDocuments extends AbstractArchiveDocuments {
 	 * @see sedaProfileGenerator.AbstractArchiveDocuments#getOldestDate()
 	 */
 	@Override
-	public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException {
+	public String getOldestDate(ContainsNode node) throws TechnicalException {
+		String archiveObjectIdentifier = node.getRelativeContext();
 
 		if (currentArchiveObjectIdentifier == null || (! currentArchiveObjectIdentifier.equals(archiveObjectIdentifier)))
-			computeDates(archiveObjectIdentifier);
+			computeDates(node);
 		return oldestDate;
 
 	}

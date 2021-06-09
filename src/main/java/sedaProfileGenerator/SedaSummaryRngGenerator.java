@@ -428,12 +428,13 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			ContainsNode node = rootContainsNode;
 			while (node != null) {
 				if (node.getMandatory() == true && node.getNbDocuments() == 0) {
+					// TODO : en cas de pb, modifier ce traitement
 					bAllMandatoryContainsHaveDocuments = false;
 					sListMandatoryContainsInError += node.getName();
 					sListMandatoryContainsInError += "\t";
 				}
 				TRACESWRITER.debug("next node = " + node.getName() + " docs = " + node.getNbDocuments()
-						+ " mandatory = " + node.getMandatory());
+						+ " mandatory = " + node.getMandatory() + " childs " + node.getChildrens().size());
 				node = node.next();
 			}
 			if (bAllMandatoryContainsHaveDocuments == false) {
@@ -623,12 +624,17 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 				}
 				int nbDocs = archiveDocuments.prepareListForType(currentContainsNode.getRelativeContext(), false);
 				currentContainsNode.incNbDocs(nbDocs);
-				archiveDocuments.computeDates(currentContainsNode.getRelativeContext());
+				archiveDocuments.computeDates(currentContainsNode);
 				currentContainsNode.setDates(
-						archiveDocuments.getOldestDate(currentContainsNode.getRelativeContext())
-						, archiveDocuments.getLatestDate(currentContainsNode.getRelativeContext()));
-				/*TRACESWRITER.debug("Dates of '" + currentDocumentTypeId + "' are '" + archiveDocuments.getOldestDate() + "' to '"
-						+ archiveDocuments.getLatestDate() + "'");*/
+						archiveDocuments.getOldestDate(currentContainsNode)
+						, archiveDocuments.getLatestDate(currentContainsNode));
+				TRACESWRITER.debug("Dates of '" + currentDocumentTypeId + "' are '" 
+						+ archiveDocuments.getOldestDate(currentContainsNode) + "' to '"
+						+ archiveDocuments.getLatestDate(currentContainsNode) + "'");
+				if (currentContainsNode == rootContainsNode ) {
+					rootContainsNode.debug("");
+				}
+
 			}
 		}
 	}
@@ -1603,7 +1609,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 			break;
 
 		case TAG_OLDESTDATE:
-			dateStringIn = archiveDocuments.getOldestDate(currentContainsNode.getRelativeContext());
+			dateStringIn = archiveDocuments.getOldestDate(currentContainsNode);
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));
@@ -1624,7 +1630,7 @@ public class SedaSummaryRngGenerator extends AbstractSedaSummaryGenerator {
 		case TAG_STARTDATE:
 
 		case TAG_LATESTDATE:
-			dateStringIn = archiveDocuments.getLatestDate(currentContainsNode.getRelativeContext());
+			dateStringIn = archiveDocuments.getLatestDate(currentContainsNode);
 			try {
 				dateString = tryParseDateDifferentFormat(dateStringIn, tag, context);
 				dateString = dateString.substring(0, dateString.indexOf("T"));

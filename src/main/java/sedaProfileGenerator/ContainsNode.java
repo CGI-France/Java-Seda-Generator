@@ -10,13 +10,15 @@ import org.slf4j.LoggerFactory;
 import exception.TechnicalException;
 
 /**
- * Cette classe permet de calculer le nombre de documents contenus dans les unités documentaires (filles comprises) Elle
- * implémente un arbre de ContainsNode Tout d'abord l'arbre doit être construit avec la méthode addNewNode incNbDocs
- * permet de mettre à jour le nombre de documents dans le nœud courant La méthode computeNbDocuments permet à la fin de
- * création de l'arbre de calculer le nombre de documents à chaque niveau de l'arborescence Ensuite getNbDocuments
- * permet de connaître le nombre de documents dans une branche La méthode next() permet de lire l'arbre comme un vecteur
- * pour la seconde passe La méthode getRelativeContext renvoie une chaîne contenant le nom du tag précédé éventuellement
- * des tag numérotés qui font partie de ses parents
+ * Cette classe permet de calculer le nombre de documents contenus dans les unités documentaires (filles comprises)
+ * Elle implémente un arbre de ContainsNode 
+ * Tout d'abord l'arbre doit être construit avec la méthode addNewNode 
+ * La méthode incNbDocs permet de mettre à jour le nombre de documents dans le nœud courant 
+ * La méthode computeNbDocuments permet à la fin de création de l'arbre de calculer le nombre de documents à chaque niveau de l'arborescence 
+ * Ensuite getNbDocuments permet de connaître le nombre de documents dans une branche 
+ * La méthode next() permet de lire l'arbre comme un vecteur pour la seconde passe 
+ * La méthode getRelativeContext renvoie une chaîne contenant le nom du tag précédé éventuellement des tag numérotés qui font partie de ses parents
+ * La méthode hasChildWithObjectIdentifier renvoie true si l'UD a une fille avec cet identifiant 
  * */
 public class ContainsNode {
 	private static final Logger TRACESWRITER = LoggerFactory.getLogger(CsvArchiveDocuments.class);
@@ -104,6 +106,7 @@ public class ContainsNode {
 		}
 		ContainsNode newNode = new ContainsNode(newNodeId, this, bContainsIsMandatory);
 		this.childrens.add(newNode);
+		TRACESWRITER.debug("addNewNode(" + this.getName() + ", " + newNodeId + ") => childs " + this.getChildrens().size() );
 		return newNode;
 	}
 
@@ -198,8 +201,8 @@ public class ContainsNode {
 
 	/**
 	 * Permet de récupérer le chemin relatif du nœud courant retourne le nom du tag précédé des tags numérotés de ses
-	 * ancètres les tags non numérotés sont exclus de cette liste exemple : /TAG_A[#1]/TAG_B/TAG_C~#2]/TAG_D/THIS_TAG a
-	 * pour chemin relatif TAG_A[#1]//TAG_C~#2]//THIS_TAG
+	 * ancètres les tags non numérotés sont exclus de cette liste exemple : /TAG_A[#1]/TAG_B/TAG_C[#2]/TAG_D/THIS_TAG a
+	 * pour chemin relatif TAG_A[#1]//TAG_C[#2]//THIS_TAG
 	 * 
 	 * TODO: à optimiser, attribut chemin relatif, calcul des chemins relatifs déclenché par exemple à
 	 * computeNbDocuments
@@ -220,16 +223,17 @@ public class ContainsNode {
 	}
 
 	/**
-	 * Permet de mettre à jour le nombre de documents dans le nœud courant La méthode computeNbDocuments sera chargée en
-	 * fin de création de l'arbre de calculer le nombre de documents à chque niveau de l'arborescence
+	 * Permet de mettre à jour le nombre de documents dans le nœud courant 
+	 * La méthode computeNbDocuments sera chargée en fin de création de l'arbre 
+	 * de calculer le nombre de documents à chaque niveau de l'arborescence
 	 */
 	public void incNbDocs(int counter) {
 		nbDocuments += counter;
 	}
 
 	/**
-	 * Cette méthode récursive calcule et met à jour le nombre de documents contenus dans le nœud et ses enfants. Pour
-	 * calculer le nombre total de documents, il faut l'exécuter sur le nœud racine
+	 * Cette méthode récursive calcule et met à jour le nombre de documents contenus dans le nœud et ses enfants. 
+	 * Pour calculer le nombre total de documents, il faut l'exécuter sur le nœud racine
 	 */
 	public int computeNbDocuments() {
 		for (ContainsNode node : childrens) {
@@ -274,6 +278,27 @@ public class ContainsNode {
 
 	public void setObjectIdentifier(String objectIdentifier) {
 		this.objectIdentifier = objectIdentifier;
+	}
+	
+	public boolean hasChildWithObjectIdentifier(String objectIdentifier) {
+		for (ContainsNode node : this.childrens) {
+			TRACESWRITER.trace("hasChildWithObjectIdentifier '" + objectIdentifier + "' test '" + node.getName() + "'");
+			if (node.getName().equals(objectIdentifier))
+				return true;
+			else
+				if (node.hasChildWithObjectIdentifier(objectIdentifier))
+					return true;
+		}
+		return false;
+	}
+	
+	public void debug(String tab) {
+		TRACESWRITER.debug(tab + objectIdentifier + "' docs '" + nbDocuments 
+				+ "' childrens '" + childrens.size() 
+				+ "' dates '" + oldestDate + "' '" + latestDate + "'");
+		for (ContainsNode node : this.childrens) {
+			node.debug(tab + "\t");
+		}
 	}
 
 }

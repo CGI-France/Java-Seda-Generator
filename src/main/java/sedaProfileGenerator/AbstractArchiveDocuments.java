@@ -83,17 +83,17 @@ public abstract class AbstractArchiveDocuments {
 	/**
 	 * Calcule les dates extrêmes pour une unité documentaire
 	 */
-	abstract public void computeDates(String archiveObjectIdentifier) throws TechnicalException;
+	abstract public void computeDates(ContainsNode node) throws TechnicalException;
 	
 	/**
 	 * Donne la date la plus récente calculée par computeDates
 	 */
-	abstract public String getLatestDate(String archiveObjectIdentifier) throws TechnicalException;
+	abstract public String getLatestDate(ContainsNode node) throws TechnicalException;
 
 	/**
 	 * Donne la date la plus ancienne calculée par computeDates
 	 */
-	abstract public String getOldestDate(String archiveObjectIdentifier) throws TechnicalException;
+	abstract public String getOldestDate(ContainsNode node) throws TechnicalException;
 
 	/**
 	 * Donne la valeur de la clé
